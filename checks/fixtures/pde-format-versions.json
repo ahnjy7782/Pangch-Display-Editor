@@ -1,0 +1,135 @@
+{
+  "//": "pde-format 회귀 테스트 fixture. 버전별 최소 프로젝트. checks/ 에서만 실행.",
+  "v4": {
+    "pdeFormatVersion": 1,
+    "name": "v4-project",
+    "mainNBT": "",
+    "nbt": "",
+    "children": [
+      {
+        "name": "root",
+        "transforms": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+        "nbt": "",
+        "isCollection": true,
+        "editorState": {
+          "version": 4,
+          "position": [1, 2, 3],
+          "quaternion": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        },
+        "children": [
+          {
+            "name": "cube",
+            "transforms": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+            "nbt": "",
+            "isBlockDisplay": true,
+            "brightness": { "sky": 15, "block": 0 },
+            "editorState": {
+              "label": "test-block",
+              "hidden": false,
+              "uvFlip": [0, 0]
+            }
+          },
+          {
+            "name": "text",
+            "transforms": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+            "nbt": "",
+            "isTextDisplay": true,
+            "options": {
+              "pages": ["hello"],
+              "color": "#FFAA00",
+              "bold": true,
+              "align": "left"
+            }
+          }
+        ]
+      }
+    ],
+    "editorState": {
+      "version": 4,
+      "objects": [],
+      "groups": [],
+      "hiddenObjectUuids": [],
+      "hiddenGroupIds": [],
+      "objectMirrorPairs": [],
+      "groupMirrorPairs": []
+    }
+  },
+  "v3": {
+    "pdeFormatVersion": 1,
+    "children": [
+      {
+        "name": "legacy-group",
+        "isCollection": true,
+        "children": [
+          {
+            "name": "stone",
+            "isBlockDisplay": true,
+            "nbt": "{data:{}}"
+          }
+        ]
+      }
+    ],
+    "editorState": {
+      "version": 3,
+      "groups": [
+        { "id": 0, "position": [0, 0, 0], "quaternion": [0, 0, 0, 1], "scale": [2, 2, 2] }
+      ],
+      "objects": [],
+      "hiddenGroupIds": [],
+      "hiddenObjectIds": [],
+      "objectMirrorPairs": [],
+      "groupMirrorPairs": []
+    }
+  },
+  "v2": {
+    "pdeFormatVersion": 1,
+    "name": "v2-project",
+    "mainNBT": "",
+    "nbt": "",
+    "children": [
+      {
+        "name": "item",
+        "transforms": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+        "isItemDisplay": true,
+        "nbt": ""
+      }
+    ],
+    "editorState": {
+      "version": 2,
+      "objects": [
+        { "id": 0, "pivot": [0.5, 0.5, 0.5] }
+      ],
+      "groups": [],
+      "hiddenObjectIds": [],
+      "hiddenGroupIds": [],
+      "objectMirrorPairs": [],
+      "groupMirrorPairs": []
+    }
+  },
+  "v1": {
+    "pdeFormatVersion": 1,
+    "name": "v1-project",
+    "mainNBT": "",
+    "nbt": "",
+    "children": [
+      {
+        "uuid": "obj-1",
+        "name": "block",
+        "transforms": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+        "isBlockDisplay": true
+      }
+    ],
+    "editorState": {
+      "version": 1,
+      "objects": [
+        { "uuid": "obj-1", "pivot": [0, 0, 0] }
+      ],
+      "groups": [],
+      "hiddenObjectUuids": [],
+      "hiddenGroupIds": [],
+      "objectMirrorPairs": [],
+      "groupMirrorPairs": []
+    }
+  }
+}

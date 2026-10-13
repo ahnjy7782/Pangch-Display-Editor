@@ -1,0 +1,41 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [0.1, main]
+
+jobs:
+  verify:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: verify checks/ is tracked
+        shell: bash
+        run: |
+          git ls-files --error-unmatch checks/pde-format-check.mjs checks/fixtures/pde-format-versions.json \
+            || (echo "checks/ is gitignored — run: git add -f checks/pde-format-check.mjs checks/fixtures/pde-format-versions.json" && exit 1)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: renderer type-check
+        run: npx tsc --noEmit
+
+      - name: electron type-check
+        run: npm run compile:electron
+
+      - name: pde-format fixture check
+        run: node checks/pde-format-check.mjs
+
+      - name: build renderer
+        run: npm run build
+
+      - name: report bundle size
+        shell: bash
+        run: |
+          size=$(du -sb renderer-dist | cut -f1)
+          echo "renderer-dist total: $size bytes"
+          echo "## Bundle size: $size bytes" >> $GITHUB_STEP_SUMMARY

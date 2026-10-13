@@ -7,7 +7,7 @@
     "dev:renderer": "vite",
     "dev:main": "cross-env NODE_ENV=development nodemon --watch main.ts --watch preload.ts --exec \"tsc -p tsconfig.electron.json && electron .\"",
     "dev": "concurrently --kill-others-on-fail -n \"main,renderer\" \"npm:dev:main\" \"npm:dev:renderer\"",
-    "build": "vite build",
+    "build": "tsc --noEmit && vite build",
     "compile:electron": "tsc -p tsconfig.electron.json",
     "pack": "npm run compile:electron && electron-builder --dir",
     "dist": "npm run build && npm run compile:electron && electron-builder",

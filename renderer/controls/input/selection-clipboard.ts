@@ -7,6 +7,7 @@ import { trackProjectEdit } from '../../save/pending-edits';
 import { deleteSelectedItems } from '../grouping/delete';
 import { getGroups, getObjectToGroup, type SceneOrderEntry } from '../grouping/group';
 import type { SelectionState } from '../selection/select';
+import { invalidateSelectionCaches } from '../selection/select';
 import { captureHistoryUiState, restoreHistoryUiState, recordCreationChange, refreshHistory } from '../undo-redo/scene-history';
 import { prepareMcfunctionFiles, type PreparedSceneFile } from '../../load-project/mcfunction/mcfunction-import';
 
@@ -152,6 +153,7 @@ function mergeSelectionFiles(targets: string[], readFiles: () => Promise<Prepare
             }
             if (!created.objects.size && !created.groups.size) return;
             data.replaceSelectionWithGroupsAndObjects(selectedGroups, selectedObjects, { anchorMode: 'center', primaryIsRangeStart: true });
+            invalidateSelectionCaches();
             if (isMerge) recordCreationChange(loadedObjectGroup, { groups: created.groups, objects: objectSelection() }, beforeUi);
             window.dispatchEvent(new CustomEvent('pde:scene-updated'));
         } catch (error) {

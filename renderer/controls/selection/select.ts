@@ -53,48 +53,27 @@ export const currentSelection: SelectionState = {
     primary: null
 };
 
-let loadedObjectGroupForSelect: Group | null = null;
-let _selectedItemsCacheKey: string | null = null;
+const loadedObjectGroupHolder: { group: Group | null } = { group: null };
 let _selectedItemsCache: SelectedItem[] | null = null;
 
 // --- Internal Helpers ---
 
-function _getSelectionCacheKey(): string {
-    if (!hasAnySelection()) return 'none';
-
-    const g = currentSelection.groups && currentSelection.groups.size > 0
-        ? Array.from(currentSelection.groups).sort().join('|')
-        : '';
-
-    const oParts: string[] = [];
-    if (currentSelection.objects && currentSelection.objects.size > 0) {
-        for (const [mesh, ids] of currentSelection.objects) {
-            oParts.push(`${mesh.uuid}:${Array.from(ids).sort().join(',')}`);
-        }
-    }
-    oParts.sort();
-
-    return `g:${g};o:${oParts.join('|')}`;
-}
-
 // --- Public API ---
 
 export function invalidateSelectionCaches(): void {
-    _selectedItemsCacheKey = null;
     _selectedItemsCache = null;
 }
 
 export function getSelectedItems(): SelectedItem[] {
-    const key = _getSelectionCacheKey();
-    if (_selectedItemsCacheKey === key && _selectedItemsCache) return _selectedItemsCache;
+    if (_selectedItemsCache) return _selectedItemsCache;
 
     const items: SelectedItem[] = [];
     const seen = new Set<string>();
 
     if (currentSelection.groups && currentSelection.groups.size > 0) {
-        if (loadedObjectGroupForSelect) {
+        if (loadedObjectGroupHolder.group) {
             for (const groupId of currentSelection.groups) {
-                const children = GroupUtils.getAllGroupChildren(loadedObjectGroupForSelect, groupId);
+                const children = GroupUtils.getAllGroupChildren(loadedObjectGroupHolder.group, groupId);
                 children.forEach((child) => {
                     if (!child.mesh) return;
                     const uniqueKey = `${child.mesh.uuid}_${child.instanceId}`;
@@ -120,13 +99,13 @@ export function getSelectedItems(): SelectedItem[] {
         }
     }
 
-    _selectedItemsCacheKey = key;
     _selectedItemsCache = items;
     return items;
 }
 
 export function setLoadedObjectGroup(group: Group): void {
-    loadedObjectGroupForSelect = group;
+    loadedObjectGroupHolder.group = group;
+    _selectedItemsCache = null;
 }
 
 export function calculateAvgOrigin(): Vector3 {

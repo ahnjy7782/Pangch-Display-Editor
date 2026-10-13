@@ -4,8 +4,9 @@ type AssetEventChannel = 'assets-downloaded' | 'assets-download-failed' | 'asset
 type AtlasName = 'block-atlas.png' | 'item-atlas.png';
 type PainterAssetType = 'brush' | 'palette';
 
-// 렌더러 프로세스의 window 객체에 안전하게 API 노출
-contextBridge.exposeInMainWorld('ipcApi', {
+// IPC 브리지 단일 소스: 이 객체의 타입이 global.d.ts의 IpcApi 정의와 동기화된다.
+// 새 채널 추가 시 이 객체만 수정하고, `npx tsc --noEmit`으로 글로벌 타입 누락을 확인한다.
+const ipcApi = {
   setActiveProject: (id: string) => ipcRenderer.send('active-project-changed', id),
   forgetProjectSavePath: (id: string) => ipcRenderer.send('forget-project-save-path', id),
   saveProject: (id: string, name: string, data: Uint8Array) => ipcRenderer.invoke('save-project', id, name, data),
@@ -90,4 +91,7 @@ contextBridge.exposeInMainWorld('ipcApi', {
         ipcRenderer.removeAllListeners(channel);
     }
   }
-});
+};
+
+// 렌더러 프로세스의 window 객체에 안전하게 API 노출
+contextBridge.exposeInMainWorld('ipcApi', ipcApi);

@@ -1,6 +1,12 @@
 # Node.js 의존성
 node_modules/
-checks/
+# checks/ 는 테스트 전용이나 CI 실행을 위해 추적 필요 (AGENTS.md: 테스트는 checks/ 에만)
+# 일회성 프로브 파일은 아래 제외 패턴으로 무시
+checks/*
+!checks/pde-format-check.mjs
+!checks/fixtures/
+checks/fixtures/*
+!checks/fixtures/pde-format-versions.json
 npm-debug.log*
 yarn-debug.log*
 .pnpm-debug.log*

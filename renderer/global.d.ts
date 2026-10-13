@@ -1,4 +1,5 @@
-﻿declare interface AssetContentResult {
+﻿// IPC 브리지 타입은 preload.ts의 ipcApi 객체에서 파생된다 (동기화: preload.ts).
+declare interface AssetContentResult {
   success: boolean;
   content: unknown;
   error?: string;

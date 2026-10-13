@@ -43,6 +43,11 @@
 - **DOM 규칙**: UI 모듈은 `index.html`의 id 기반 정적 구조를 전제로 작성. 새 요소는 동적 생성 허용. CSS는 `ui/css/*` (main.css가 @import 집결).
 - `asset-manager.ts`가 에셋 접근 단일 창구 (`getAssetBytes` → Blob URL).
 
+### TSL 관용구 (표준 패턴)
+- **인스턴스 숨김**: `entityVisiblePositionNode` — 가시성 어트리뷰트가 0이면 `float(1).sub(visible).mul(1e10)` 오프셋으로 메시를 화면 밖으로 날려 숨김(`renderer/entity-material.ts`). `geometry.dispose` 없이 인스턴스 숨김/표시를 토글하는 이유: 버텍스 데이터 재업로드 회피. 새로 숨김 기능 만들 때 이 패턴 사용.
+- **드래그 프리뷰**: `dragPreviewPosition` — `dragDeltaMatrix` uniform으로 월드 변환을 어트리뷰트 기반 선택 인스턴스에만 블렌드.
+- **인스턴스 매트릭스 바인딩 안정화**: `stabilizeInstancedMatrixBindingNames` — WebGPU backend의 `createNodeBuilder`를 래핑해 instanceMatrix 버퍼의 셰이더 바인딩 이름을 `pdeInstanceMatrix`로 고정(셰이더 캐시 히트). 커스텀 WebGPU 셰이더 기능 추가 시 이 래퍼 이후에 적용해야 파이프라인 캐시가 깨지지 않음.
+
 ### File Format (pbde / .pde)
 - 확장자 `.pde` = zstd 압축된 `PRJ2` 아카이브 (`scene.json` payload).
 - `PdeProject`: `pdeFormatVersion: 1`, `children: PdeNode[]`, `editorState: PdeEditorState`(버전 1~4 하위호환 마이그레이션 내장 — `pde-format.ts`의 validate/encode/omitDefaults가 단일 진실공급원).
@@ -64,7 +69,7 @@
 ---
 
 ## Rules
-- **`npm run build`(vite build) 단독 금지** — TS 타입에러를 통과시킴. 검증은 `npx tsc --noEmit`(renderer) 또는 `npm run compile:electron`. 실제 패키지는 `npm run dist`.
+- `npm run build`은 **타입체크를 포함한다** (`tsc --noEmit && vite build`). 타입체크 없이 번들만 돌리는 건 금지 — 검증은 `npx tsc --noEmit` / `npm run compile:electron` / `npm run dist`.
 - 테스트/프로브 파일은 `checks/` 에만 (해당 디렉터리는 .gitignore 대상).
 - 렌더러 새 모듈은 반드시 SoC 디렉터리(`controls/`·`load-project/`·`save/`·`export/`·`ui/`·`player-head-service/`) 하위에 배치.
 - main↔renderer IPC 추가 시: `preload.ts` 브리지 → `renderer/global.d.ts` 타입 → 사용처, 3곳 동시 수정.

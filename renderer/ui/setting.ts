@@ -482,9 +482,7 @@ window.addEventListener('pde:scene-updated', () => { if (!overlay.hidden) void r
 window.addEventListener('pde:project-name-changed', event => {
   overlay.querySelector<HTMLOutputElement>('#scene-project-name')!.value = (event as CustomEvent<string>).detail || '새 프로젝트';
 });
-setInterval(() => {
-  if (!overlay.hidden && !overlay.querySelector<HTMLElement>('[data-settings-content="scene"]')!.hidden) void refreshSceneStatus();
-}, 1000);
+window.addEventListener('pde:scene-edit-applied', () => { if (!overlay.hidden) void refreshSceneStatus(); });
 
 toolbarPosition.addEventListener('change', () => {
   toolbar.classList.toggle('toolbar-bottom', toolbarPosition.value === 'bottom');
