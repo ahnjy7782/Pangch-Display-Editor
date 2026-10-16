@@ -1,7 +1,8 @@
-import { capturePlayerHeadAtlasState, commitPlayerHeadPaint, getPlayerHeadAtlasFaces, restorePlayerHeadAtlasState, type PlayerHeadAtlasFace } from '../load-project/display/mesh-builder';
-import { isApplying, record, redo, undo } from '../controls/undo-redo/undo-redo';
-import { getShortcuts, matchesShortcut } from '../controls/input/shortcuts';
+import { capturePlayerHeadAtlasState, commitPlayerHeadPaint, getPlayerHeadAtlasFaces, restorePlayerHeadAtlasState, type PlayerHeadAtlasFace } from '../../load-project/display/mesh-builder';
+import { isApplying, record, redo, undo } from '../../controls/undo-redo/undo-redo';
+import { getShortcuts, matchesShortcut } from '../../controls/input/shortcuts';
 import { getHeadAtlasUvRect, setHeadAtlasUvRect, transformHeadUvRect, type HeadUvRect } from './head-atlas-uv';
+import { openAtlasColorReplace } from './atlas-color-replace';
 
 export type HeadAtlasPaintTarget = {
     canvas: HTMLCanvasElement;
@@ -46,6 +47,17 @@ let refreshPainterGrid = () => {};
 let refreshPainterPreview: (canvas: HTMLCanvasElement | null, pixels: readonly { x: number; y: number }[]) => void = () => {};
 const isAtlasPainting = (): boolean => !!playerHeadAtlasScroll.dataset.headPainterTool && playerHeadAtlasScroll.dataset.headPainterTool !== 'select';
 const moveTools = playerHeadAtlasScroll.querySelector<HTMLElement>('.player-head-atlas-tools')!;
+const replaceColorButton = moveTools.querySelector<HTMLButtonElement>('[data-atlas-color-replace]')!;
+replaceColorButton.addEventListener('click', () => {
+    cancelUvDrag?.();
+    cancelPaintSelection?.();
+    const canvas = playerHeadAtlasCanvases[activePlayerHeadAtlas];
+    if (!canvas) return;
+    const paintRect = paintSelections.get(canvas);
+    const rects = isAtlasPainting() ? (paintRect ? [paintRect] : []) : [...selectedRegions.values()].map(region =>
+        moveMode === 'texture' ? region.rect : getHeadAtlasUvRect(canvas, region.faceX, region.faceY));
+    openAtlasColorReplace(canvas, rects, activePlayerHeadAtlas, replaceColorButton);
+});
 const metrics = playerHeadAtlasScroll.querySelector<HTMLElement>('.player-head-uv-metrics')!;
 const [positionX, positionY, pixelSize] = metrics.querySelectorAll('span');
 const moveLabels = { uv: 'UV만 이동', texture: '텍스처만 이동', both: 'UV와 텍스처 함께 이동' };
@@ -71,6 +83,7 @@ playerHeadAtlasScroll.tabIndex = 0;
 const actionButtons = moveTools.querySelectorAll<HTMLButtonElement>('[data-atlas-action]');
 for (const button of actionButtons) button.addEventListener('click', () => runAtlasAction(button.dataset.atlasAction as AtlasAction));
 const updateActionButtons = () => {
+    replaceColorButton.disabled = !playerHeadAtlasCanvases.length;
     for (const button of actionButtons) {
         const action = button.dataset.atlasAction as Exclude<AtlasAction, 'selectAll'>;
         const label = { duplicate: '선택 영역 복제', deleteSelection: '선택 영역 텍스처 삭제', flipX: 'X축 반전 (좌우)', flipY: 'Y축 반전 (상하)' }[action];

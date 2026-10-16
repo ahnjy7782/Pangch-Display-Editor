@@ -1,4 +1,4 @@
-import type * as THREE from 'three/webgpu';
+import type { BufferGeometry, Object3D, Quaternion, Vector3 } from 'three/webgpu';
 
 export type AssetPayload = string | Uint8Array | ArrayBuffer | unknown;
 
@@ -11,9 +11,9 @@ export type TypedArrayConstructor = {
 };
 
 export interface HeadGeometrySet {
-    base: THREE.BufferGeometry;
-    layer: THREE.BufferGeometry;
-    merged: THREE.BufferGeometry | null;
+    base: BufferGeometry;
+    layer: BufferGeometry;
+    merged: BufferGeometry | null;
 }
 
 export interface GeometryMeta {
@@ -80,7 +80,7 @@ export interface OtherItem {
 export interface GroupChild {
     type: 'group' | 'object';
     id?: string;
-    mesh?: THREE.Object3D;
+    mesh?: Object3D;
     instanceId?: number;
 }
 
@@ -90,10 +90,10 @@ export interface GroupData {
     children: GroupChild[];
     parent: string | null;
     name: string;
-    position: { x: number; y: number; z: number } | THREE.Vector3;
-    quaternion: { x: number; y: number; z: number; w: number } | THREE.Quaternion;
-    scale: { x: number; y: number; z: number } | THREE.Vector3;
-    pivot?: [number, number, number] | number[] | THREE.Vector3;
+    position: { x: number; y: number; z: number } | Vector3;
+    quaternion: { x: number; y: number; z: number; w: number } | Quaternion;
+    scale: { x: number; y: number; z: number } | Vector3;
+    pivot?: [number, number, number] | number[] | Vector3;
     isCustomPivot?: boolean;
     nbt?: string;
 }

@@ -1,6 +1,6 @@
 {
   "name": "pangch-display-editor",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "main": "electron-dist/main.js",
   "type": "module",
   "scripts": {
@@ -17,7 +17,7 @@
     "typescript": "^7.0.2",
     "concurrently": "^10.0.6",
     "cross-env": "^10.1.0",
-    "electron": "^44.7.0",
+    "electron": "^44.7.2",
     "electron-builder": "^26.15.3",
     "vite": "^8.3.4",
     "nodemon": "^3.1.14",

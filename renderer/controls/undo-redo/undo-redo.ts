@@ -32,6 +32,7 @@ export function record(command: UndoRedoCommand): void {
 
 export async function undo(): Promise<boolean> {
     if (applying) return false;
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('pde:before-history-change'));
     const { undoStack, redoStack } = getHistory();
     const command = undoStack[undoStack.length - 1];
     if (!command) return false;
@@ -49,6 +50,7 @@ export async function undo(): Promise<boolean> {
 
 export async function redo(): Promise<boolean> {
     if (applying) return false;
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('pde:before-history-change'));
     const { undoStack, redoStack } = getHistory();
     const command = redoStack[redoStack.length - 1];
     if (!command) return false;

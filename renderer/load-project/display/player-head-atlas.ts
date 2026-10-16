@@ -1,5 +1,5 @@
 import { BoxGeometry, BufferAttribute, BufferGeometry, DoubleSide, InstancedBufferAttribute, InstancedInterleavedBuffer, InstancedMesh, InterleavedBufferAttribute, Material, Matrix4, NearestFilter, SRGBColorSpace, StorageInstancedBufferAttribute, Texture } from 'three/webgpu';
-import { type HeadUvEntry, resetHeadAtlasUvs, createHeadAtlasUvTexture, captureHeadAtlasUvs, setHeadAtlasUvRect, readHeadAtlasRegion, copyHeadAtlasRegion, getHeadAtlasUvRect } from '../../ui/head-atlas-uv';
+import { type HeadUvEntry, resetHeadAtlasUvs, createHeadAtlasUvTexture, captureHeadAtlasUvs, setHeadAtlasUvRect, readHeadAtlasRegion, copyHeadAtlasRegion, getHeadAtlasUvRect } from '../../ui/head-editor/head-atlas-uv';
 import { getPlayerHeadDisplayMatrix } from '../scene/scene-parser';
 import { type HeadGeometrySet, type TypedArrayConstructor } from '../pbde/pbde-types';
 import { createEntityMaterial, setEntityStateAttributes } from '../../entity-material';
@@ -347,7 +347,7 @@ function isLayerTransparent(img: HTMLImageElement, uvRegions: number[][]): boole
     }
 }
 
-const DEFAULT_PLAYER_HEAD_TEXTURE = 'https://textures.minecraft.net/texture/d94e1686adb67823c7e5148c2c06e2d95c1b66374409e96b32dc1310397e1711';
+export const DEFAULT_PLAYER_HEAD_TEXTURE = 'https://textures.minecraft.net/texture/d94e1686adb67823c7e5148c2c06e2d95c1b66374409e96b32dc1310397e1711';
 
 export function loadPlayerHeadImage(url: string): Promise<HTMLImageElement> {
     return new Promise((resolve, reject) => {
@@ -531,7 +531,7 @@ function imageHeadTileMatches(
     return true;
 }
 
-// ponytail: generated image heads keep only their editable front tile; promote one to a regular head before replacing all six faces.
+// shortcut: image heads keep only the selected layer's front face, promote to a regular head to edit all six faces.
 export function createImageHeadAtlasMeshes(
     source: HTMLCanvasElement,
     columns: number,
@@ -1315,6 +1315,23 @@ function applyPlayerHeadTexture(objectUuid: string, textureUrl: string, image: H
     const ref = (userData.objectUuidToInstance as Map<string, { mesh: InstancedMesh; instanceId: number }> | undefined)?.get(objectUuid);
     if (!ref) throw new Error('텍스처를 변경할 플레이어 헤드를 찾을 수 없습니다.');
 
+    if (ref.mesh.userData.imageHeadLayer !== undefined) {
+        const canvas = document.createElement('canvas');
+        canvas.width = PLAYER_HEAD_BLOCK_WIDTH;
+        canvas.height = PLAYER_HEAD_BLOCK_HEIGHT;
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('텍스처 캔버스를 만들 수 없습니다.');
+        context.imageSmoothingEnabled = false;
+        drawPlayerHeadSlot(context, image, 0);
+        const surface = getPlayerHeadPaintSurface(ref.mesh, ref.instanceId, true);
+        if (!surface) throw new Error('플레이어 헤드 아틀라스를 찾을 수 없습니다.');
+        writePlayerHeadPaint(surface, context.getImageData(0, 0, canvas.width, canvas.height), true, null);
+        commitPlayerHeadPaint(surface);
+        (userData.objectTextures as Map<string, string> | undefined)?.set(objectUuid,
+            image.src === DEFAULT_PLAYER_HEAD_TEXTURE ? DEFAULT_PLAYER_HEAD_TEXTURE : textureUrl);
+        return;
+    }
+
     const material = (Array.isArray(ref.mesh.material) ? ref.mesh.material[0] : ref.mesh.material) as Material;
     const atlas = playerHeadAtlases.get(material);
     const uvOffsets = ref.mesh.geometry.getAttribute('instancedUvOffset') as InstancedBufferAttribute | undefined;
@@ -1378,6 +1395,7 @@ export function getImageHeadAtlasMaterial(atlas: PlayerHeadAtlas): Material[] {
 }
 
 async function updateHeadTexture(objectUuid: string, textureUrl: string): Promise<void> {
+    textureUrl = textureUrl.trim() || DEFAULT_PLAYER_HEAD_TEXTURE;
     applyPlayerHeadTexture(objectUuid, textureUrl, await loadPlayerHeadImage(textureUrl));
     if (!isApplying()) window.dispatchEvent(new CustomEvent('pde:scene-updated'));
 }

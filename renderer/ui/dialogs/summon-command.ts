@@ -1,8 +1,8 @@
-import { generateSummonCommands, generateSummonCommandsAsync, summonCommandLimits, type SummonExportMode } from '../export/summon-command';
-import { loadedObjectGroup } from '../load-project/display/display-instancing';
-import { getPlayerHeadTexture } from '../load-project/display/player-head-atlas';
-import { matchesShortcut } from '../controls/input/shortcuts';
-import { openWithAnimation, closeWithAnimation } from './ui-open-close.js';
+import { generateSummonCommands, generateSummonCommandsAsync, summonCommandLimits, type SummonExportMode } from '../../export/summon-command';
+import { loadedObjectGroup } from '../../load-project/display/display-instancing';
+import { getPlayerHeadTexture } from '../../load-project/display/player-head-atlas';
+import { matchesShortcut } from '../../controls/input/shortcuts';
+import { openWithAnimation, closeWithAnimation } from '../common/ui-open-close.js';
 
 const dialog = document.createElement('dialog');
 dialog.id = 'summon-command-dialog';

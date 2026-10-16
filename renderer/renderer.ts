@@ -24,15 +24,17 @@ import {
 } from 'three/webgpu';
 import { initAssets } from './asset-manager';
 import { stabilizeInstancedMatrixBindingNames } from './entity-material';
-import { getItemIconAtlas } from './ui/item-icon-atlas';
+import { getItemIconAtlas } from './ui/toolbar/item-icon-atlas';
+import { initTransformToolbar } from './ui/toolbar/transform-toolbar';
 import { ensureSpriteAtlases } from './load-project/scene/sprite-atlas';
 import { loadedObjectGroup } from './load-project/pbde/upload-pbde';
-import { openWithAnimation, closeWithAnimation } from './ui/ui-open-close';
-import { initContextMenu } from './ui/context-menu';
-import './ui/scene-panel';
-import './ui/panel-layout';
-import './ui/object-properties';
-import { initHeadPainter, updateHeadPainter } from './ui/head-painter';
+import { openWithAnimation, closeWithAnimation } from './ui/common/ui-open-close';
+import { initContextMenu } from './ui/dialogs/context-menu';
+import './ui/scene-panel/scene-panel';
+import './ui/layout/panel-layout';
+import './ui/object-properties/object-properties';
+import { initHeadPainter, updateHeadPainter } from './ui/head-editor/head-painter';
+import { waitForWelcome } from './ui/dialogs/welcome';
 
 // 전역 변수로 선언
 let scene: Scene;
@@ -50,6 +52,7 @@ let gridHeight = Number(localStorage.getItem('pdeGridHeight'));
 if (!Number.isFinite(gridHeight)) gridHeight = 0;
 let gridAxesVisible = localStorage.getItem('pdeGridAxesVisible') !== 'false';
 let gizmoModule: InitGizmoResult | null = null;
+const updateTransformToolbar = initTransformToolbar(() => gizmoModule);
 type GpuQueueLike = { onSubmittedWorkDone?: () => Promise<void> };
 type WebGpuRendererWithBackend = { backend?: { device?: { queue?: GpuQueueLike } } };
 type WebGpuRendererWithPipelines = { _pipelines?: { caches?: { size?: number } } };
@@ -423,6 +426,8 @@ async function startApp(): Promise<void> {
   await closeWithAnimation(loadingOverlay);
   loadingOverlay.classList.remove('visible');
 
+  await waitForWelcome();
+
   // --- 4. Three.js 씬 초기화 (기존 코드) ---
   await initScene();
   animate();
@@ -649,6 +654,7 @@ async function initScene(): Promise<void> {
 }
 
 function setCameraType(type: 'perspective' | 'orthographic'): void {
+    if (!camera || !controls || !viewHelper) return;
     if (type === 'perspective' ? camera.isPerspectiveCamera : camera.isOrthographicCamera) return;
 
     const mainContent = document.getElementById('main-content')!;
@@ -703,6 +709,7 @@ function animate(): void {
     
     // Update gizmo: overlay and axis orientation
     if (gizmoModule) gizmoModule.updateGizmo();
+    updateTransformToolbar();
     updateHeadPainter();
     if (renderer && scene && camera && !scenePrecompileInProgress) {
         viewHelper.center.copy(controls.target);

@@ -1,12 +1,12 @@
-import { closeWithAnimation, openWithAnimation } from './ui-open-close.js';
+import { closeWithAnimation, openWithAnimation } from '../common/ui-open-close.js';
 import { getBlockIconName, getItemIconAtlas, type ItemIconAtlas } from './item-icon-atlas';
-import { currentSelection } from '../controls/selection/select';
-import { addDisplayObject, addTextDisplay, loadedObjectGroup, replaceDisplayObjects } from '../load-project/display/mesh-builder';
-import { getCompatibleBlockProperties } from '../load-project/pbde/pbde-assets';
-import { captureHistoryUiState, recordCreationChange, recordReplacementChange } from '../controls/undo-redo/scene-history.js';
+import { currentSelection } from '../../controls/selection/select';
+import { addDisplayObject, addTextDisplay, loadedObjectGroup, replaceDisplayObjects } from '../../load-project/display/mesh-builder';
+import { getCompatibleBlockProperties } from '../../load-project/pbde/pbde-assets';
+import { captureHistoryUiState, recordCreationChange, recordReplacementChange } from '../../controls/undo-redo/scene-history.js';
 import type { InstancedMesh } from 'three/webgpu';
-import { matchesShortcut } from '../controls/input/shortcuts';
-import { toggleHeadPainter } from './head-painter';
+import { matchesShortcut } from '../../controls/input/shortcuts';
+import { toggleHeadPainter } from '../head-editor/head-painter';
 
 type AtlasName = 'block-atlas.png' | 'item-atlas.png';
 

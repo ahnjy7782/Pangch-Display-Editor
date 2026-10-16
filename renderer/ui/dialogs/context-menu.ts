@@ -1,5 +1,5 @@
-import { closeWithAnimation, openWithAnimation } from './ui-open-close';
-import type { FlipAxis } from '../controls/transform/flip';
+import { closeWithAnimation, openWithAnimation } from '../common/ui-open-close';
+import type { FlipAxis } from '../../controls/transform/flip';
 
 type CameraType = 'perspective' | 'orthographic';
 

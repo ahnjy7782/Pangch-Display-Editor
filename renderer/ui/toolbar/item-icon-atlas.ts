@@ -1,9 +1,9 @@
 import { Box3, BufferGeometry, Float32BufferAttribute, Group, Material, MathUtils, Mesh, NearestFilter, OrthographicCamera, Scene, SRGBColorSpace, Texture, Vector3, WebGPURenderer } from 'three/webgpu';
-import { createEntityMaterial, dragSelectedAttributeName } from '../entity-material';
-import { mainThreadAssetProvider } from '../load-project/pbde/pbde-assets';
-import { buildBlockIconTemplate, buildItemIconModels, type ModelData } from '../load-project/scene/scene-parser';
-import { resolveItemModelParts } from '../load-project/scene/item-model-definition';
-import { buildTextureAtlasForRenderList, type TexturePixelData } from '../load-project/scene/texture-atlas-builder';
+import { createEntityMaterial, dragSelectedAttributeName } from '../../entity-material';
+import { mainThreadAssetProvider } from '../../load-project/pbde/pbde-assets';
+import { buildBlockIconTemplate, buildItemIconModels, type ModelData } from '../../load-project/scene/scene-parser';
+import { resolveItemModelParts } from '../../load-project/scene/item-model-definition';
+import { buildTextureAtlasForRenderList, type TexturePixelData } from '../../load-project/scene/texture-atlas-builder';
 
 const iconSize = 64;
 const iconAssetPromises = new Map<string, ReturnType<typeof mainThreadAssetProvider.getAsset>>();

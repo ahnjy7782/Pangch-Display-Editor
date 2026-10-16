@@ -27,8 +27,8 @@ import {
   setPlayerHeadLayerVisible,
   writePlayerHeadPaint,
   type PlayerHeadPaintSurface
-} from '../load-project/display/mesh-builder';
-import { currentSelection } from '../controls/selection/select';
+} from '../../load-project/display/mesh-builder';
+import { currentSelection } from '../../controls/selection/select';
 import {
   getHeadPainterFaceAxes,
   hideHeadPainterStampPreview,
@@ -37,22 +37,22 @@ import {
   removeHeadPainterGridOverlay,
   updateHeadPainterStampPreview,
   updateHeadPainterGridOverlay
-} from '../controls/selection/overlay';
-import { record } from '../controls/undo-redo/undo-redo';
-import { isShortcutPressed, matchesShortcut } from '../controls/input/shortcuts';
-import { dragDeltaMatrix, dragSelectedAttributeName } from '../entity-material';
-import { oklchToRgb, openColorPicker, rgbToOklch } from './color-picker';
-import { closeWithAnimation, openWithAnimation } from './ui-open-close.js';
-import { isSceneObjectVisible } from '../controls/scene-visibility';
-import { getSceneRaycastFaces, getSceneRaycastObjects, intersectSceneInstances } from '../controls/selection/instance-raycast';
+} from '../../controls/selection/overlay';
+import { record } from '../../controls/undo-redo/undo-redo';
+import { isShortcutPressed, matchesShortcut } from '../../controls/input/shortcuts';
+import { dragDeltaMatrix, dragSelectedAttributeName } from '../../entity-material';
+import { oklchToRgb, openColorPicker, rgbToOklch } from '../common/color-picker';
+import { closeWithAnimation, openWithAnimation } from '../common/ui-open-close.js';
+import { isSceneObjectVisible } from '../../controls/scene-visibility';
+import { getSceneRaycastFaces, getSceneRaycastObjects, intersectSceneInstances } from '../../controls/selection/instance-raycast';
 import {
   createHeadPainterGpuPreview, disposeHeadPainterGpuPreview, headPainterPixelEpsilon, updateHeadPainterGpuPreviewData,
   type HeadPainterGpuPreview, type HeadPainterGpuPreviewData
-} from '../controls/selection/head-painter-gpu-preview';
-import { captureHistoryUiState, recordCreationChange, recordReplacementChange } from '../controls/undo-redo/scene-history';
-import { getLinkedMirrorUuid, isMirrorModelingEnabled } from '../controls/transform/mirroring';
+} from '../../controls/selection/head-painter-gpu-preview';
+import { captureHistoryUiState, recordCreationChange, recordReplacementChange } from '../../controls/undo-redo/scene-history';
+import { getLinkedMirrorUuid, isMirrorModelingEnabled } from '../../controls/transform/mirroring';
 import { addImageHeadGrid, createHeadProject, createPlayerProject, type PlayerModel } from './player-generator';
-import playerHeadIcon from '../../resources/player_head.svg?raw';
+import playerHeadIcon from '../../../resources/player_head.svg?raw';
 import { initHeadTextureGenerator } from './head-texture-generator';
 import { readTextureColor } from './texture-color-pick';
 import {
@@ -958,22 +958,45 @@ function fillAt(hit: PaintHit, allFaces = isShortcutPressed('headPainterFillAllF
   const part = facePartIndexes[hit.face] + hit.layer * 6;
   const target = readPixel(work.image, part, gridCellPixel(hit.x, hit.columns, hit.textureWidth), gridCellPixel(hit.y, hit.rows, hit.textureHeight));
   if (!allFaces) {
-    const matches = (index: number) => {
-      const x = index % hit.columns;
-      const y = Math.floor(index / hit.columns);
-      return rgbaEqual(readPixel(work.image, part, gridCellPixel(x, hit.columns, hit.textureWidth), gridCellPixel(y, hit.rows, hit.textureHeight)), target);
-    };
-    const indexes = isShortcutPressed('headPainterConnectedFill')
-      ? connectedCellIndexes(hit.columns, hit.rows, hit.y * hit.columns + hit.x, matches)
-      : Array.from({ length: hit.columns * hit.rows }, (_, index) => index).filter(matches);
-    for (const index of indexes) {
-      const x = index % hit.columns;
-      const y = Math.floor(index / hit.columns);
-      forEachPaintPixel(hit, x, y, (pixelX, pixelY) => {
-        work.changed = writePixel(work.image, part, pixelX, pixelY, colorForLayer(currentColor, hit.layer)) || work.changed;
-      });
+    const fillFace = isShortcutPressed('headPainterConnectedFill');
+    const hits = [hit];
+    if (paintAdjacentHeads) {
+      const visited = new Set([hit.surface.objectUuid]);
+      const images = new Map<string, ImageData>();
+      for (let index = 0; index < hits.length; index++) {
+        const current = hits[index];
+        const adjacentHit = createAdjacentBrushHit({ ...current, x: Math.floor(current.columns / 2), y: Math.floor(current.rows / 2) },
+          current.columns + 2, current.rows + 2, undefined, undefined, images);
+        const visit = (x: number, y: number) => {
+          const next = adjacentHit(x, y);
+          if (!next || next.layer !== hit.layer || visited.has(next.surface.objectUuid)) return;
+          visited.add(next.surface.objectUuid);
+          hits.push(next);
+        };
+        for (let x = 0; x < current.columns; x++) {
+          visit(x, -1);
+          visit(x, current.rows);
+        }
+        for (let y = 0; y < current.rows; y++) {
+          visit(-1, y);
+          visit(current.columns, y);
+        }
+      }
     }
-    flushWork(work);
+    for (const current of hits) {
+      const currentWork = getWork(current);
+      const currentPart = facePartIndexes[current.face] + current.layer * 6;
+      for (let y = 0; y < current.rows; y++) {
+        for (let x = 0; x < current.columns; x++) {
+          const pixel = readPixel(currentWork.image, currentPart, gridCellPixel(x, current.columns, current.textureWidth), gridCellPixel(y, current.rows, current.textureHeight));
+          if (!fillFace && (pixel[0] !== target[0] || pixel[1] !== target[1] || pixel[2] !== target[2])) continue;
+          forEachPaintPixel(current, x, y, (pixelX, pixelY) => {
+            currentWork.changed = writePixel(currentWork.image, currentPart, pixelX, pixelY, colorForLayer(currentColor, current.layer)) || currentWork.changed;
+          });
+        }
+      }
+      flushWork(currentWork);
+    }
     return;
   }
   for (const currentPart of facePartIndexes.map(index => index + hit.layer * 6)) {
@@ -2585,7 +2608,7 @@ function createPanel(): void {
       <div class="head-painter-custom-brush"><span>기본 브러시</span><button type="button" class="lucide-icon" data-basic-brush="square" aria-label="브러시 선택" title="브러시 선택">${toolIcons.brush}</button><button type="button" class="lucide-icon" aria-label="설정" title="설정" disabled>\uE2F0</button><button type="button" class="lucide-icon" aria-label="삭제" title="삭제" disabled>\uE18E</button></div>
       <div class="head-painter-custom-brushes"></div><button type="button" id="head-painter-add-brush">+ 커스텀 브러시</button>
     </fieldset>
-    <fieldset data-tool-settings="bucket" hidden><legend>양동이</legend><small>아틀라스 클릭: 인접한 같은 RGB · Ctrl: 해당 헤드 6면<br>3D 클릭: 같은 RGBA · Shift: 인접 영역 · Ctrl: 6면 전체</small></fieldset>
+    <fieldset data-tool-settings="bucket" hidden><legend>양동이</legend><small>아틀라스 클릭: 인접한 같은 RGB · Ctrl: 해당 헤드 6면<br>3D 클릭: 같은 RGB · Shift: 한 면 전체 · Ctrl: 6면 전체<br>인접 헤드 페인트: 3D 클릭·Shift 범위를 인접 헤드로 확장</small></fieldset>
     <fieldset data-tool-settings="eraser" hidden>
       <legend>지우개</legend>
       <label>크기 <span class="head-painter-range"><input id="head-painter-eraser-size-range" type="range" min="1" max="8" value="1"><input id="head-painter-eraser-size" type="number" min="1" max="8" value="1"></span></label>
@@ -2641,7 +2664,7 @@ function createPanel(): void {
   document.getElementById('head-painter')!.append(root);
   initSectionReordering();
   initPlayerGenerator();
-  initHeadTextureGenerator(root.querySelector<HTMLElement>('[data-head-painter-section="texture-generator"]')!, endPaintPointer);
+  initHeadTextureGenerator(root.querySelector<HTMLElement>('[data-head-painter-section="texture-generator"]')!, endPaintPointer, () => stroke !== null);
   createBrushEditor();
 
   root.querySelectorAll<HTMLButtonElement>('.head-painter-tool').forEach(button => button.onclick = () => setTool(button.dataset.tool as Tool));
@@ -2800,6 +2823,7 @@ export function toggleHeadPainter(): void {
 
 export function initHeadPainter(context: PainterContext): void {
   painterContext = context;
+  if (!root) createPanel();
   window.addEventListener('keydown', onKeyDown, true);
   window.addEventListener('keyup', onKeyUp, true);
   window.addEventListener('pointerdown', onPointerDown, true);
@@ -2823,6 +2847,7 @@ window.addEventListener('pde:scene-updated', event => {
   invalidateHeadPainterGridOverlay();
 });
 window.addEventListener('pde:object-transform-changed', invalidateHeadPainterGridOverlay);
+window.addEventListener('pde:before-history-change', endPaintPointer);
 window.addEventListener('pde:scene-visibility-changed', invalidateHeadPainterGridOverlay);
 window.addEventListener('pde:history-restored', invalidateHeadPainterGridOverlay);
 document.addEventListener('pointerdown', event => {

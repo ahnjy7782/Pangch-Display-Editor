@@ -452,6 +452,7 @@ function createWindow() {
     win.webContents.openDevTools();
   
     win.webContents.on('before-input-event', (event, input) => {
+      if (event.defaultPrevented) return;
       if (input.key === 'F12' && input.type === 'keyDown') {
         win.webContents.toggleDevTools();
         event.preventDefault();
@@ -463,7 +464,7 @@ function createWindow() {
   }
 
   Menu.setApplicationMenu(null);
-  initHeadTextureService(win);
+  const resetSkinGenerator = initHeadTextureService(win);
 
   const projectFiles = new ProjectFileStore();
   const autoSaveFiles = new AutoSaveFileStore(autoSaveDirectory);
@@ -477,6 +478,13 @@ function createWindow() {
       await fs.mkdir(autoSaveDirectory, { recursive: true });
       const error = await shell.openPath(autoSaveDirectory);
       return error ? { success: false, error } : { success: true };
+    } catch (error) { return { success: false, error: errorMessage(error) }; }
+  });
+  ipcMain.handle('open-minecraft-eula', async event => {
+    if (event.sender !== win.webContents || event.senderFrame !== win.webContents.mainFrame) return { success: false, error: 'Invalid EULA sender' };
+    try {
+      await shell.openExternal('https://www.minecraft.net/ko-kr/eula');
+      return { success: true };
     } catch (error) { return { success: false, error: errorMessage(error) }; }
   });
   ipcMain.on('set-auto-save-projects', (event, projects: { id: string; name: string; revision: number }[]) => {
@@ -558,6 +566,7 @@ function createWindow() {
   );
 
   ipcMain.handle('reset-pde-data', async (_event, scope: 'cache' | 'assets') => {
+    let resumeSkinGenerator: (() => void) | undefined;
     try {
       if (scope === 'assets') {
         await Promise.all([
@@ -569,6 +578,7 @@ function createWindow() {
           fs.rm(SPRITE_ATLAS_DIR, { recursive: true, force: true })
         ]);
       } else if (scope === 'cache') {
+        resumeSkinGenerator = await resetSkinGenerator();
         await Promise.all([
           win.webContents.session.clearCache(),
           win.webContents.session.clearStorageData(),
@@ -584,6 +594,7 @@ function createWindow() {
       }, 100);
       return { success: true };
     } catch (error) {
+      resumeSkinGenerator?.();
       return { success: false, error: errorMessage(error) };
     }
   });

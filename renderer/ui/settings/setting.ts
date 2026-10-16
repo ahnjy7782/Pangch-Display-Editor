@@ -1,10 +1,14 @@
-import { blockbenchScaleMode, toggleBlockbenchScaleMode } from '../controls/gizmo/blockbench-scale';
-import { closeWithAnimation, openWithAnimation } from './ui-open-close.js';
-import { loadedObjectGroup } from '../load-project/pbde/upload-pbde';
-import { cleanLabel } from './scene-panel/scene-panel-model';
-import { getShortcutConflictDetails, getShortcutMapping, getShortcuts, matchesShortcut, normalizeShortcutKey, resetShortcutMapping, resetShortcuts, setShortcutMapping, setShortcuts, shortcutDefinitions, shortcutFromKeys } from '../controls/input/shortcuts';
-import { autoSaveStorageKey, readAutoSaveSettings, updateAutoSaveSettings } from '../save/auto/auto-save-settings';
-import { autoSaveError } from '../save/auto/auto-save';
+import { blockbenchScaleMode, toggleBlockbenchScaleMode } from '../../controls/gizmo/blockbench-scale';
+import { closeWithAnimation, openWithAnimation } from '../common/ui-open-close.js';
+import { loadedObjectGroup } from '../../load-project/pbde/upload-pbde';
+import { cleanLabel } from '../scene-panel/scene-panel-model';
+import { getShortcutConflictDetails, getShortcutMapping, getShortcuts, matchesShortcut, normalizeShortcutKey, resetShortcutMapping, resetShortcuts, setShortcutMapping, setShortcuts, shortcutDefinitions, shortcutFromKeys } from '../../controls/input/shortcuts';
+import { autoSaveStorageKey, readAutoSaveSettings, updateAutoSaveSettings } from '../../save/auto/auto-save-settings';
+import { autoSaveError } from '../../save/auto/auto-save';
+import { initHeadAccountSettings } from './head-account-settings';
+import { initMineSkinSettings } from './head-mineskin-settings';
+import { initTransformToolbarSettings } from './transform-toolbar-settings';
+import { setSceneToolbarPosition } from '../toolbar/transform-toolbar';
 
 const settingsButton = document.getElementById('settings-button')!;
 const toolbar = document.getElementById('scene-toolbar')!;
@@ -27,6 +31,7 @@ overlay.innerHTML = `
           <fieldset>
             <legend>인터페이스</legend>
             <label class="settings-row"><span>도구 패널</span><span class="settings-select"><select id="toolbar-position"><option value="top">위</option><option value="bottom">아래</option></select><span class="lucide-icon">&#xE06D;</span></span></label>
+            <div id="transform-toolbar-settings"></div>
             <label class="settings-row"><span>카메라</span><span class="settings-select"><select id="camera-type"><option value="perspective">원근</option><option value="orthographic">직교</option></select><span class="lucide-icon">&#xE06D;</span></span></label>
             <label class="settings-row"><span>카메라 FOV</span><span class="settings-range"><input id="camera-fov" type="range" min="20" max="120" value="80"><output>80°</output></span></label>
             <label class="settings-row"><span>렌더 해상도</span><span class="settings-select"><select id="render-scale"><option value="1">100%</option><option value="1.25">125%</option><option value="1.5">150%</option><option value="2">200%</option></select><span class="lucide-icon">&#xE06D;</span></span></label>
@@ -47,11 +52,20 @@ overlay.innerHTML = `
             <div class="settings-row"><label for="auto-save-maximum">파일 최대 갯수</label><div class="settings-auto-save-files"><input id="auto-save-maximum" type="text" inputmode="numeric"><p class="settings-auto-save-warning">⚠️ 주의 갯수를 초과한 파일은 제거됩니다 ⚠️</p><p>저장 위치: <span id="auto-save-directory"></span></p></div></div>
             <p id="auto-save-error" role="status" aria-live="polite" hidden></p>
           </fieldset>
-          <fieldset>
+          <fieldset class="settings-head-accounts">
             <legend>헤드 페인트 계정</legend>
-            <button class="settings-login" type="button">로그인하기</button>
-            <button class="settings-logout" type="button" hidden>로그아웃</button>
-            <p class="settings-account-status" role="status" aria-live="polite"></p>
+            <section class="settings-minecraft-accounts" aria-labelledby="settings-minecraft-title">
+              <h4 id="settings-minecraft-title">Minecraft</h4>
+              <div class="settings-account-list"></div>
+              <button class="settings-login" type="button" aria-label="Minecraft 계정 로그인 및 추가">로그인하기</button>
+              <p class="settings-account-status" role="status" aria-live="polite"></p>
+            </section>
+            <section class="settings-mineskin-accounts" aria-labelledby="settings-mineskin-title">
+              <h4 id="settings-mineskin-title">MineSkin</h4>
+              <div class="settings-mineskin-list"></div>
+              <button type="button" class="settings-mineskin-add" aria-label="MineSkin API 키 추가">＋</button>
+              <p class="settings-mineskin-status" role="status" aria-live="polite"></p>
+            </section>
           </fieldset>
         </section>
         <section class="settings-page" data-settings-content="shortcuts" hidden>
@@ -85,7 +99,7 @@ overlay.innerHTML = `
           <h3>PDE 초기화</h3>
           <fieldset>
             <legend>캐시 초기화</legend>
-            <p>PDE의 네트워크 캐시, UI 배치·설정, 단축키 프리셋을 삭제하고 재시작합니다.</p>
+            <p>PDE의 네트워크 캐시, UI 배치·설정, 단축키 프리셋, skin-generator의 Minecraft 계정·MineSkin 키·생성 텍스처 캐시를 삭제하고 재시작합니다.</p>
             <p class="settings-danger-text">설정이나 UI 배치가 손상됐거나 캐시 오류가 의심될 때만 사용하세요. 저장하지 않은 작업은 먼저 저장해야 합니다.</p>
             <button type="button" data-reset-scope="cache">캐시 초기화</button>
           </fieldset>
@@ -108,6 +122,7 @@ overlay.innerHTML = `
   </section>
 `;
 document.body.appendChild(overlay);
+initTransformToolbarSettings(overlay.querySelector<HTMLElement>('#transform-toolbar-settings')!);
 
 let autoSaveSettings = readAutoSaveSettings(localStorage);
 const autoSaveEnabled = overlay.querySelector<HTMLInputElement>('#auto-save-enabled')!;
@@ -152,37 +167,15 @@ autoSaveMaximum.addEventListener('blur', () => commitAutoSaveSettings({ maximum:
 for (const input of [autoSaveTime, autoSaveMaximum]) input.addEventListener('keydown', event => { if (event.key === 'Enter') input.blur(); });
 window.addEventListener('pde:auto-save-error', (event: CustomEvent<string>) => renderAutoSaveError(event.detail));
 
-const loginButton = overlay.querySelector<HTMLButtonElement>('.settings-login')!;
-const logoutButton = overlay.querySelector<HTMLButtonElement>('.settings-logout')!;
-const accountStatus = overlay.querySelector<HTMLElement>('.settings-account-status')!;
-const headTextureApi = window.ipcApi?.headTextures;
-function renderHeadAccount(state: Awaited<ReturnType<typeof window.ipcApi.headTextures.account>>): void {
-  loginButton.textContent = state.username ? '다시 로그인' : '로그인하기';
-  logoutButton.hidden = !state.username;
-  accountStatus.textContent = state.error || (state.username ? `${state.username} 로그인됨` : state.configured ? '로그인하지 않음' : 'PDE Microsoft 앱 등록 설정이 필요합니다.');
-}
-async function changeHeadAccount(action: 'login' | 'logout'): Promise<void> {
-  if (!headTextureApi) return;
-  const button = action === 'login' ? loginButton : logoutButton;
-  button.disabled = true;
-  accountStatus.textContent = action === 'login' ? '브라우저에서 Microsoft 로그인을 완료해 주세요.' : '스킨 복원 후 로그아웃합니다…';
-  try { renderHeadAccount(await headTextureApi[action]()); }
-  catch (error) { accountStatus.textContent = String(error); }
-  finally { button.disabled = false; }
-}
-loginButton.onclick = () => { void changeHeadAccount('login'); };
-logoutButton.onclick = () => { void changeHeadAccount('logout'); };
-if (headTextureApi) {
-  void headTextureApi.account().then(renderHeadAccount).catch(error => { accountStatus.textContent = String(error); });
-  const unsubscribeHeadAccount = headTextureApi.subscribe(event => { if (event.account) renderHeadAccount(event.account); });
-  window.addEventListener('beforeunload', unsubscribeHeadAccount, { once: true });
-} else {
-  loginButton.disabled = true;
-  accountStatus.textContent = '새 계정 기능을 연결하려면 PDE 데스크톱 앱을 다시 시작해 주세요.';
-}
+initHeadAccountSettings(overlay.querySelector<HTMLElement>('.settings-head-accounts')!);
+initMineSkinSettings(overlay.querySelector<HTMLElement>('.settings-mineskin-accounts')!);
 
 const settingsWindow = overlay.querySelector<HTMLElement>('.settings-window')!;
 const closeButton = overlay.querySelector<HTMLButtonElement>('.settings-close')!;
+let openedFromWelcome = false;
+let settingsClosing = false;
+let onSettingsClose: (() => void) | undefined;
+let cancelShortcutCapture: (() => void) | undefined;
 const toolbarPosition = overlay.querySelector<HTMLSelectElement>('#toolbar-position')!;
 const cameraType = overlay.querySelector<HTMLSelectElement>('#camera-type')!;
 const fovInput = overlay.querySelector<HTMLInputElement>('#camera-fov')!;
@@ -244,6 +237,7 @@ function renderShortcuts(): void {
     const clearButton = document.createElement('button');
     const resetButton = document.createElement('button');
     row.className = 'settings-shortcut-row';
+    row.dataset.shortcutId = shortcut.id;
     keyButton.type = addButton.type = clearButton.type = resetButton.type = 'button';
     keyButton.textContent = getShortcuts(shortcut.id).map(key => key.split('+').join(' + ')).join(', ') || '지정 안 함';
     const conflicts = getShortcutConflictDetails(shortcut.id);
@@ -262,14 +256,17 @@ function renderShortcuts(): void {
     resetButton.ariaLabel = `${shortcut.label} 단축키 기본값 복원`;
 
     const captureShortcut = (append: boolean): void => {
+      cancelShortcutCapture?.();
       keyButton.textContent = '키 입력…';
       const capturedKeys = new Set<string>();
       const activeKeys = new Set<string>();
       const finish = (value?: string): void => {
         window.removeEventListener('keydown', keydown, true);
         window.removeEventListener('keyup', keyup, true);
+        cancelShortcutCapture = undefined;
         if (value) setShortcuts(shortcut.id, [...new Set(append ? [...getShortcuts(shortcut.id), value] : [value])]);
         renderShortcuts();
+        shortcutList.querySelector<HTMLButtonElement>(`[data-shortcut-id="${shortcut.id}"] > button`)?.focus();
       };
       const stop = (event: KeyboardEvent): void => {
         event.preventDefault();
@@ -284,11 +281,14 @@ function renderShortcuts(): void {
       };
       const keyup = (event: KeyboardEvent): void => {
         stop(event);
+        // Ignore the Enter/Space release that activated the capture button.
+        if (!capturedKeys.size) return;
         activeKeys.delete(normalizeShortcutKey(event.key));
         if (!activeKeys.size) finish(shortcutFromKeys(capturedKeys));
       };
       window.addEventListener('keydown', keydown, true);
       window.addEventListener('keyup', keyup, true);
+      cancelShortcutCapture = () => finish();
     };
     keyButton.addEventListener('click', () => captureShortcut(false));
     addButton.addEventListener('click', () => captureShortcut(true));
@@ -408,6 +408,7 @@ presetToggle.addEventListener('click', async () => {
 });
 
 async function refreshSceneStatus(): Promise<void> {
+  if (openedFromWelcome) return;
   const data = loadedObjectGroup.userData;
   const objects = data.objectUuidToInstance as Map<string, { mesh: { userData: { displayType?: string } } }> | undefined;
   const items = data.objectIsItemDisplay as Set<string> | undefined;
@@ -434,6 +435,7 @@ async function refreshSceneStatus(): Promise<void> {
     .map(([name, count]) => Object.assign(document.createElement('li'), { textContent: `${name} (${count})` })));
   const bytes = await window.ipcApi.getPdeMemoryUsage().catch(() => 0);
   overlay.querySelector<HTMLOutputElement>('#scene-memory')!.value = bytes ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : '-';
+  if (import.meta.env.DEV) console.assert(overlay.querySelector('#scene-object-types')!.childElementCount === Number(overlay.querySelector<HTMLOutputElement>('#scene-object-type-count')!.value), 'Scene object types are incomplete.');
 }
 
 toolbarPosition.value = localStorage.getItem('pdeToolbarPosition') === 'bottom' ? 'bottom' : 'top';
@@ -452,28 +454,57 @@ if (savedScaleMode !== blockbenchScaleMode) toggleBlockbenchScaleMode();
 scaleMode.value = blockbenchScaleMode ? 'blockbench' : 'default';
 objectReplaceMode.value = localStorage.getItem('pdeObjectReplaceMode') === 'preserve-visible-size' ? 'preserve-visible-size' : 'default';
 
-function openSettings(): void {
+function selectSettingsPage(selectedPage: string): void {
+  if (openedFromWelcome && selectedPage !== 'general' && selectedPage !== 'shortcuts') return;
+  overlay.querySelectorAll<HTMLButtonElement>('[data-settings-page]').forEach(button => {
+    button.classList.toggle('active', button.dataset.settingsPage === selectedPage);
+  });
+  overlay.querySelectorAll<HTMLElement>('[data-settings-content]').forEach(page => {
+    page.hidden = page.dataset.settingsContent !== selectedPage;
+  });
+}
+
+export function openSettings(options: {
+  initialPage?: 'general' | 'shortcuts' | 'scene' | 'reset';
+  fromWelcome?: boolean;
+  onClose?: () => void;
+} = {}): HTMLElement {
+  if (!overlay.hidden) return overlay;
+  openedFromWelcome = options.fromWelcome ?? false;
+  onSettingsClose = options.onClose;
+  overlay.querySelectorAll<HTMLButtonElement>('[data-settings-page]').forEach(button => {
+    button.disabled = openedFromWelcome && (button.dataset.settingsPage === 'scene' || button.dataset.settingsPage === 'reset');
+  });
+  overlay.querySelectorAll<HTMLElement>('[data-settings-content]').forEach(page => {
+    page.inert = openedFromWelcome && (page.dataset.settingsContent === 'scene' || page.dataset.settingsContent === 'reset');
+  });
+  selectSettingsPage(openedFromWelcome && options.initialPage !== 'shortcuts' ? 'general'
+    : options.initialPage ?? overlay.querySelector<HTMLButtonElement>('.settings-nav .active')!.dataset.settingsPage!);
   overlay.hidden = false;
-  void refreshSceneStatus();
+  if (!openedFromWelcome) void refreshSceneStatus();
   openWithAnimation(settingsWindow);
   closeButton.focus();
+  return overlay;
 }
 
 function closeSettings(): void {
-  if (overlay.hidden) return;
+  if (overlay.hidden || settingsClosing) return;
+  cancelShortcutCapture?.();
+  settingsClosing = true;
   void closeWithAnimation(settingsWindow).then(() => {
     overlay.hidden = true;
-    settingsButton.focus();
+    settingsClosing = false;
+    const onClose = onSettingsClose;
+    onSettingsClose = undefined;
+    if (onClose) onClose();
+    else settingsButton.focus();
   });
 }
 
 overlay.querySelectorAll<HTMLButtonElement>('[data-settings-page]').forEach(button => {
   button.addEventListener('click', () => {
-    overlay.querySelector('.settings-nav .active')?.classList.remove('active');
-    button.classList.add('active');
-    overlay.querySelectorAll<HTMLElement>('[data-settings-content]').forEach(page => {
-      page.hidden = page.dataset.settingsContent !== button.dataset.settingsPage;
-    });
+    if (button.disabled) return;
+    selectSettingsPage(button.dataset.settingsPage!);
     if (button.dataset.settingsPage === 'scene') void refreshSceneStatus();
   });
 });
@@ -487,8 +518,10 @@ setInterval(() => {
 }, 1000);
 
 toolbarPosition.addEventListener('change', () => {
-  toolbar.classList.toggle('toolbar-bottom', toolbarPosition.value === 'bottom');
-  localStorage.setItem('pdeToolbarPosition', toolbarPosition.value);
+  setSceneToolbarPosition(toolbarPosition.value);
+});
+window.addEventListener('pde:toolbar-settings-changed', () => {
+  toolbarPosition.value = localStorage.getItem('pdeToolbarPosition') === 'bottom' ? 'bottom' : 'top';
 });
 cameraType.addEventListener('change', () => {
   localStorage.setItem('pdeCameraType', cameraType.value);
@@ -587,6 +620,7 @@ document.addEventListener('click', event => {
 
 overlay.querySelectorAll<HTMLButtonElement>('[data-reset-scope]').forEach(button => {
   button.addEventListener('click', async () => {
+    if (openedFromWelcome) return;
     const scope = button.dataset.resetScope as 'cache' | 'assets';
     const label = scope === 'cache' ? 'PDE 캐시' : '에셋 캐시';
     if (!confirm(`${label}를 삭제하고 PDE를 재시작할까요?`)) return;
@@ -600,6 +634,7 @@ overlay.querySelectorAll<HTMLButtonElement>('[data-reset-scope]').forEach(button
 });
 
 overlay.querySelector<HTMLButtonElement>('#force-gc')!.addEventListener('click', async event => {
+  if (openedFromWelcome) return;
   const button = event.currentTarget as HTMLButtonElement;
   const status = overlay.querySelector<HTMLElement>('#memory-cleanup-status')!;
   button.disabled = true;
@@ -618,10 +653,17 @@ overlay.querySelector<HTMLButtonElement>('#force-gc')!.addEventListener('click',
   }
 });
 
-settingsButton.addEventListener('click', openSettings);
+settingsButton.addEventListener('click', () => { openSettings(); });
 closeButton.addEventListener('click', closeSettings);
 overlay.addEventListener('click', event => {
   if (event.target === overlay) closeSettings();
+});
+overlay.addEventListener('keydown', event => {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeSettings();
+  }
+  if (!openedFromWelcome) event.stopPropagation();
 });
 document.addEventListener('keydown', event => {
   const target = event.target;
@@ -635,5 +677,4 @@ if (import.meta.env.DEV) {
   console.assert(overlay.querySelectorAll('[data-settings-page]').length === 4 && overlay.querySelectorAll('[data-settings-content]').length === 4, 'Settings page navigation is incomplete.');
   console.assert(overlay.querySelectorAll('[data-reset-scope]').length === 2 && overlay.querySelector('#force-gc'), 'PDE reset controls are incomplete.');
   console.assert(dragControls.map(control => control.querySelector('.settings-drag-menu')!.childElementCount).join() === '7,11,7', 'Drag value presets are incomplete.');
-  void refreshSceneStatus().then(() => console.assert(overlay.querySelector('#scene-object-types')!.childElementCount === Number(overlay.querySelector<HTMLOutputElement>('#scene-object-type-count')!.value), 'Scene object types are incomplete.'));
 }

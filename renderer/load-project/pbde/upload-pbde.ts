@@ -1,4 +1,4 @@
-import { openWithAnimation, closeWithAnimation } from '../../ui/ui-open-close.js';
+import { openWithAnimation, closeWithAnimation } from '../../ui/common/ui-open-close.js';
 import { Group, Mesh, Object3D } from 'three/webgpu';
 import { beginPbdeLoadGeneration, loadAndRenderPbde, loadedObjectGroup, notifyPlayerHeadAtlasesChanged, performSelection, updateGlobalBrightness } from '../display/mesh-builder';
 import type { GlobalBrightness, LoadedSelection } from '../display/mesh-builder';

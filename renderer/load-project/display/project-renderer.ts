@@ -19,6 +19,7 @@ import { appendPlayerHeadEntries, findAppendablePlayerHeadMesh } from '../batchi
 import { restoreEditorState } from '../../save/project-state';
 import { trackProjectEdit } from '../../save/pending-edits';
 import { createImageHeadAtlasGeometry, getImageHeadAtlasMaterial } from './player-head-atlas';
+import { beginPlayerHeadLoading } from '../../ui/head-editor/head-texture-loading';
 
 function _clearSceneAndCaches(): void {
     // 1-1. 캐시된 텍스처 및 리소스 완벽 해제
@@ -835,6 +836,7 @@ async function renderPbdeProject(file: File, isMerge: boolean, overrideGen?: num
                 }
                 if (playerHeadItems.length > 0) {
                     const playerHeadPromise = (async () => {
+                        let finishLoading: (() => void) | undefined;
                         try {
                             if (!headGeometries || !headGeometries.merged) {
                                 console.error("Head geometries not available for instancing.");
@@ -852,6 +854,7 @@ async function renderPbdeProject(file: File, isMerge: boolean, overrideGen?: num
                                 else missingUrls.push(url);
                             }
 
+                            if (missingUrls.length) finishLoading = beginPlayerHeadLoading();
                             const loadedSkins = await Promise.all(missingUrls.map(async url => ({ url, image: await loadPlayerHeadImage(url) })));
                             if (myGen !== currentLoadGen) return;
                             for (const { url, image } of loadedSkins) {
@@ -942,6 +945,8 @@ async function renderPbdeProject(file: File, isMerge: boolean, overrideGen?: num
 
                         } catch (err) {
                             console.error('Player head instancing failed:', err);
+                        } finally {
+                            finishLoading?.();
                         }
                     })();
 

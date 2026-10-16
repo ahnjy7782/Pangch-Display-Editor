@@ -1,7 +1,46 @@
+#menu-bar {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 20;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: var(--menu-bar-height);
+  padding: 0 12px;
+  border-bottom: 1px solid #3a3a3e;
+  background: #252528;
+}
+
+.menu-bar-logo {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  background: url('../../../resources/Pangch.svg') center / contain no-repeat;
+}
+
+.menu-bar-title {
+  flex: none;
+  width: 33px;
+  height: 12px;
+  background: currentColor;
+  mask: url('../../../resources/pde-wordmark.svg') center / 100% 100% no-repeat;
+  font-size: 0;
+}
+
+.menu-bar-items {
+  display: flex;
+  gap: 16px;
+  margin-left: 8px;
+  color: #bbb;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 /* ----- 도킹 패널 ----- */
 .panel-dock {
   position: absolute;
-  top: 0;
+  top: var(--menu-bar-height);
   width: 280px;
   bottom: 0;
   background-color: #252528;
@@ -378,14 +417,17 @@
 .player-head-uv-selection [data-uv-handle="sw"] { left: 0; top: 100%; cursor: nesw-resize; }
 .player-head-uv-selection [data-uv-handle="w"] { left: 0; top: 50%; cursor: ew-resize; }
 
-#scene-toolbar {
+.horizontal-toolbar {
+  box-sizing: border-box;
   position: absolute;
   top: 12px;
-  left: 50%;
+  left: calc((100% + var(--sidebar-left-space, 52px) - var(--sidebar-right-space, 52px)) / 2);
+  max-width: calc((100% - 24px - var(--sidebar-left-space, 52px) - var(--sidebar-right-space, 52px)) / 1.3);
   z-index: 1;
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
   padding: 5px 10px;
   transform: translateX(-50%) scale(1.3);
   transform-origin: top center;
@@ -395,11 +437,100 @@
   color: #ccc;
 }
 
-#scene-toolbar.toolbar-bottom {
+.horizontal-toolbar.toolbar-bottom {
   top: auto;
   bottom: 12px;
   transform-origin: bottom center;
 }
+
+.vertical-toolbar {
+  box-sizing: border-box;
+  position: absolute;
+  top: 6px;
+  bottom: 12px;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 46px;
+  height: max-content;
+  max-height: max(0px, calc(100% - 18px));
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  border: 1px solid #45454a;
+  border-radius: 7px;
+  padding: 4px;
+  background: #252528;
+}
+
+.vertical-toolbar[data-position='left'] { left: calc(6px + var(--sidebar-offset, 0px)); }
+.vertical-toolbar[data-position='right'] { right: calc(6px + var(--sidebar-offset, 0px)); }
+
+.horizontal-toolbar .vertical-toolbar {
+  order: 3;
+  position: static;
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+  height: auto;
+  max-height: none;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: visible;
+}
+
+.horizontal-toolbar #edit-toolbar { order: 4; }
+.horizontal-toolbar .vertical-toolbar button {
+  flex: 0 0 18.75px;
+  width: 18.75px;
+  height: 18.75px;
+  font-size: 18.75px;
+  line-height: 1;
+}
+.horizontal-toolbar .transform-icon { width: 18.75px; height: 18.75px; }
+
+.horizontal-toolbar[hidden],
+.vertical-toolbar[hidden],
+.vertical-toolbar button[hidden] { display: none !important; }
+
+@container (max-width: 400px) {
+  .horizontal-toolbar {
+    left: calc(12px + var(--sidebar-left-space, 52px));
+    right: calc(12px + var(--sidebar-right-space, 52px));
+    max-width: none;
+    justify-content: center;
+    flex-wrap: wrap;
+    transform: none;
+  }
+}
+
+.vertical-toolbar button {
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #ccc;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.vertical-toolbar button[aria-pressed="true"] { background: #365375; color: #fff; }
+.vertical-toolbar button:hover:not(:disabled, [aria-pressed="true"]) { background: #45454a; }
+.vertical-toolbar button:focus-visible { outline: 2px solid #9acaff; outline-offset: -2px; }
+.vertical-toolbar button:disabled { opacity: .35; cursor: default; }
+.transform-icon { width: 22px; height: 22px; background: currentColor; mask: var(--transform-mask) center / contain no-repeat; }
+.transform-icon.blockbench-scale { --transform-mask: url('../../../resources/blockbench-scale.svg'); }
+.transform-icon.shear { --transform-mask: url('../../../resources/shear.svg'); }
 
 #scene-toolbar i {
   font: normal 400 18.75px/1 'lucide';

@@ -7,6 +7,42 @@
   background: #0009;
 }
 
+.atlas-color-replace .settings-window {
+  width: min(360px, calc(100vw - 32px));
+  height: auto;
+}
+
+.atlas-color-replace form {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+}
+
+.atlas-color-row,
+.atlas-color-replace form > label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.atlas-color-replace p {
+  margin: 0;
+}
+
+.atlas-color-input {
+  display: flex;
+  gap: 8px;
+}
+
+.atlas-color-input button {
+  width: 28px;
+}
+
+.atlas-color-input input {
+  width: 88px;
+}
+
 .summon-command-window {
   padding: 0;
   max-width: calc(100vw - 32px);
@@ -251,9 +287,19 @@
   cursor: pointer;
 }
 
-.settings-nav button:hover,
+.settings-nav button:hover:not(:disabled),
 .settings-nav button.active {
   background: #3b3b40;
+}
+
+.settings-nav button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.settings-window :focus-visible {
+  outline: 2px solid #70c7ff;
+  outline-offset: 2px;
 }
 
 .settings-nav .settings-reset {
@@ -462,6 +508,27 @@
   gap: 6px;
 }
 
+#transform-toolbar-settings,
+.settings-sidebar-controls { display: grid; gap: 8px; }
+.settings-sidebar-row { align-items: start; }
+.settings-sidebar-tools { display: flex; flex-wrap: wrap; gap: 4px; }
+.settings-sidebar-tools label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  width: 32px;
+  padding: 6px 2px;
+  border: 1px solid #45454a;
+  border-radius: 4px;
+  background: #1e1e1e;
+  cursor: pointer;
+}
+.settings-sidebar-tools .lucide-icon { font-size: 22px; }
+.settings-sidebar-tools input { margin: 0; cursor: pointer; }
+.settings-sidebar-tools label:has(:checked) { border-color: #70c7ff; }
+.settings-sidebar-tools label:focus-within { outline: 2px solid #9acaff; }
+
 .settings-row-toggle input[type='text'] {
   flex: 1;
   min-width: 0;
@@ -621,6 +688,81 @@
 
 .settings-range output {
   text-align: right;
+}
+
+.settings-head-accounts h4 {
+  margin: 8px 0;
+}
+
+.settings-mineskin-accounts {
+  margin-top: 18px;
+  border-top: 1px solid #44444a;
+}
+
+.settings-account-list,
+.settings-mineskin-list {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.settings-account-row {
+  display: grid;
+  grid-template-columns: auto 32px minmax(0, 1fr) 32px;
+  align-items: center;
+  gap: 10px;
+}
+
+.settings-mineskin-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 32px 32px;
+  align-items: center;
+  gap: 10px;
+}
+
+.settings-mineskin-row input {
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid #55555a;
+  border-radius: 4px;
+  background: #252528;
+  color: inherit;
+}
+
+.settings-account-face {
+  width: 32px;
+  height: 32px;
+  image-rendering: pixelated;
+  text-align: center;
+  line-height: 32px;
+}
+
+.settings-account-name,
+.settings-account-status {
+  overflow-wrap: anywhere;
+}
+
+.settings-account-remove,
+.settings-mineskin-row button,
+.settings-mineskin-add {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #55555a;
+  border-radius: 4px;
+  background: #343438;
+  color: inherit;
+  cursor: pointer;
+}
+
+.settings-head-accounts :focus-visible {
+  outline: 2px solid #6ba5ff;
+  outline-offset: 2px;
+}
+
+.settings-account-row :disabled,
+.settings-mineskin-accounts :disabled {
+  cursor: default;
+  opacity: 0.5;
 }
 
 .settings-login,
