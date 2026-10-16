@@ -66,9 +66,9 @@ function updateObjectIcon(icon: HTMLElement, uuid: string): void {
     const rawName = ud.objectLabels?.get(uuid) ?? ud.objectNames?.get(uuid) ?? uuid.slice(0, 8);
     const isItemDisplay = ud.objectIsItemDisplay?.has(uuid) ?? false;
     const isTextDisplay = ud.objectUuidToInstance?.get(uuid)?.mesh.userData.displayType === 'text_display';
+    const texture = ud.objectTextures?.get(uuid);
     const isPaintedHead = rawName.startsWith('player_head') && (
-        ud.objectTextures?.get(uuid)?.startsWith('data:image/png;base64')
-        || ud.objectUuidToInstance?.get(uuid)?.mesh.userData.imageHeadLayer !== undefined
+        texture?.startsWith('data:image/png;base64') || texture === 'pde:deferred-player-head-texture'
     );
     icon.className = `scene-icon ${isTextDisplay ? 'icon-text' : isItemDisplay ? 'icon-item' : 'icon-box'}`;
     const text = isTextDisplay ? '\uE198' : isPaintedHead ? '\uE1D3' : isItemDisplay ? '\uE5C6' : '\uE061';

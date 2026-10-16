@@ -1,4 +1,4 @@
-import './head-atlas-panel';
+import '../head-editor/head-atlas-panel';
 import { dockSides, movePanelInLayout, panelIds, restorePanelLayout, selectVisiblePanel, singlePanelGroup } from './panel-layout-state';
 import type { DockSide, DropPlacement, PanelGroup, PanelId, PanelLayout } from './panel-layout-state';
 import { initPanelGroupScrollbar } from './panel-group-scrollbar';
@@ -415,6 +415,7 @@ function getDockSideAtPoint(x: number, y: number): DockSide | undefined {
 }
 
 function getDropPlacement(x: number, y: number): DropPlacement | null {
+    if (y < mainContent.offsetTop) return null;
     const edgeWidth = window.innerWidth * 0.05;
     const side = getDockSideAtPoint(x, y) ?? (x <= edgeWidth ? 'left' : x >= window.innerWidth - edgeWidth ? 'right' : undefined);
     if (!side) return null;
@@ -454,7 +455,7 @@ function measureDropRect(side: DockSide, groups: PanelGroup[], panelId: PanelId,
     const dockRect = dock.getBoundingClientRect();
     const dockWidth = dock.classList.contains('minimized') || dock.classList.contains('empty')
         ? 280 : dockRect.width || 280;
-    const dockHeight = dock.clientHeight || window.innerHeight;
+    const dockHeight = dock.clientHeight || mainContent.clientHeight;
     dropMeasurePanels = Object.fromEntries(panelIds.map(id => {
         const panel = panels[id].cloneNode(true) as HTMLElement;
         if (!panel.querySelector(`#${headers[id].id}`)) panel.prepend(headers[id].cloneNode(true));
@@ -477,7 +478,7 @@ function measureDropRect(side: DockSide, groups: PanelGroup[], panelId: PanelId,
     dropMeasureDock.classList.toggle('dock-right', side === 'right');
     Object.assign(dropMeasureDock.style, {
         position: 'fixed',
-        top: `${dockRect.height ? dockRect.top : 0}px`,
+        top: `${dockRect.height ? dockRect.top : mainContent.offsetTop}px`,
         right: 'auto',
         bottom: 'auto',
         left: `${side === 'left' ? 0 : window.innerWidth - dockWidth}px`,

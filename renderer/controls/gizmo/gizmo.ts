@@ -33,7 +33,8 @@ import * as Overlay from '../selection/overlay';
 import * as CustomPivot from '../pivot/custom-pivot';
 import { initDrag, applyDeltaToSelection } from '../selection/drag';
 import { mergeInstanceIds } from '../selection/instance-ranges';
-import { initHandleKey, type HandleKeyState } from '../input/handle-key';
+import { initHandleKey, type HandleKeyState, type TransformToolbarControls } from '../input/handle-key';
+import { getShearDragDelta, maxShearAngle } from './shear-drag';
 import { isShortcutPressed } from '../input/shortcuts';
 import {
     captureGroupStructureState,
@@ -136,7 +137,7 @@ export interface InitGizmoParams {
     setControls?: (c: OrbitControlsLike) => void;
 }
 
-export interface InitGizmoResult {
+export interface InitGizmoResult extends TransformToolbarControls {
     getTransformControls: () => TransformControls;
     updateGizmo: () => void;
     resetSelection: () => void;
@@ -479,6 +480,8 @@ const dragInitialPosition = new Vector3();
 const dragInitialBoundingBox = new Box3();
 const dragStartPivotBaseWorld = new Vector3();
 let draggingMode: string | null = null;
+let isShearMode = false;
+let isShearDrag = false;
 let isGizmoBusy = false;
 let dragAnchorDirections: { x: boolean; y: boolean; z: boolean } = { x: true, y: true, z: true };
 let previousGizmoMode = 'translate';
@@ -643,7 +646,7 @@ function updateSelectionOverlay(): void {
 }
 
 function _updateMultiSelectionOverlayDuringDrag(): void {
-    Overlay.updateMultiSelectionOverlayDuringDrag(currentSelection, selectionHelper!.matrixWorld, dragInitialMatrix);
+    Overlay.updateMultiSelectionOverlayDuringDrag(currentSelection, _pendingHelperMatrix, dragInitialMatrix);
 }
 
 function flushSelectionTransform(): void {
@@ -733,6 +736,7 @@ function updateHelperPosition(): void {
     if (items.length === 0 && !_hasAnySelection()) return;
 
     const isMulti = _isMultiSelection();
+    if (!isMulti && !currentSelection.primary) _setPrimaryToFirstAvailable();
 
     if (!isCustomPivot && !_multiSelectionOriginAnchorValid && _isMultiSelection() && currentSelection.primary && _selectionAnchorMode !== 'center') {
         let primaryPivotWorld: Vector3 | null = null;
@@ -1404,6 +1408,7 @@ export function initGizmo({
             }
             Overlay.prepareMultiSelectionDrag(currentSelection);
             draggingMode = transformControls!.mode;
+            isShearDrag = isShearMode && draggingMode === 'rotate' && !isPivotEditMode;
             selectionTransformDirty = false;
             _dragPreviewActive = false;
             _dragTotalDeltaMatrix.identity();
@@ -1418,6 +1423,7 @@ export function initGizmo({
             dragInitialQuaternion.copy(selectionHelper!.quaternion);
             dragInitialScale.copy(selectionHelper!.scale);
             dragInitialPosition.copy(selectionHelper!.position);
+            if (isShearDrag) transformControls!.rotationAngle = 0;
 
             if (isPivotEditMode) {
                 dragStartPivotBaseWorld.copy(SelectionCenter('origin', false, _ZERO_VEC3));
@@ -1472,15 +1478,16 @@ export function initGizmo({
 
         } else {
             selectionHelper!.updateMatrixWorld();
-            const changed = !selectionHelper!.matrixWorld.equals(dragInitialMatrix);
+            const changed = !(isShearDrag ? _pendingHelperMatrix : selectionHelper!.matrixWorld).equals(dragInitialMatrix);
             const smartScaleExtruded = endSmartScaleDrag();
             commitSelectionTransform();
 
-            if (draggingMode === 'rotate' && _isMultiSelection() && !currentSelection.primary) {
+            if (draggingMode === 'rotate' && !isShearDrag && _isMultiSelection() && !currentSelection.primary) {
                 _multiSelectionAccumulatedRotation.copy(selectionHelper!.quaternion);
             }
 
             draggingMode = null;
+            isShearDrag = false;
             isUniformScale = false;
 
             if (isPivotEditMode) {
@@ -1694,6 +1701,32 @@ export function initGizmo({
             }
 
             selectionHelper!.updateMatrixWorld();
+            if (isShearDrag) {
+                const axis = transformControls!.rotationAxis.clone();
+                if (currentSpace === 'local' && ['X', 'Y', 'Z'].includes(transformControls!.axis!)) {
+                    const worldAxis = new Vector3().setComponent('XYZ'.indexOf(transformControls!.axis!), 1)
+                        .applyQuaternion(transformControls!.worldQuaternion);
+                    // Camera-aligned rings already report a world-space rotation axis.
+                    if (worldAxis.cross(transformControls!.eye).lengthSq() !== 0) {
+                        axis.applyQuaternion(transformControls!.worldQuaternionStart);
+                    }
+                }
+                getShearDragDelta(
+                    new Vector3().setFromMatrixPosition(dragInitialMatrix),
+                    axis,
+                    transformControls!.pointStart,
+                    transformControls!.rotationAngle,
+                    _pendingHelperMatrix
+                ).multiply(dragInitialMatrix);
+                selectionHelper!.quaternion.copy(dragInitialQuaternion);
+                if (currentSpace === 'local' && Number.isFinite(transformControls!.rotationAngle)) {
+                    const angle = Math.max(-maxShearAngle, Math.min(maxShearAngle, transformControls!.rotationAngle));
+                    selectionHelper!.quaternion.premultiply(new Quaternion().setFromAxisAngle(axis.normalize(), angle));
+                }
+                selectionHelper!.updateMatrixWorld();
+                selectionTransformDirty = true;
+                return;
+            }
             if (isSmartScaleEnabled() && !selectionHelper!.matrixWorld.equals(previousHelperMatrix)) captureDragHistoryBefore();
             if (isSmartScaleEnabled() && updateSmartScaleDuringDrag(
                 selectionHelper!, scaleDirections, currentSelection, loadedObjectGroup, smartScaleCallbacks
@@ -1708,6 +1741,8 @@ export function initGizmo({
     });
 
     const handleKeyState: HandleKeyState = {
+        get isShearMode() { return isShearMode; },
+        set isShearMode(v) { isShearMode = v; },
         get isVertexMode() { return isVertexMode; },
         set isVertexMode(v) { isVertexMode = v; },
         get currentSpace() { return currentSpace; },
@@ -1740,7 +1775,7 @@ export function initGizmo({
         set controls(v) { controls = v; }
     };
 
-    initHandleKey({
+    const transformToolbarControls = initHandleKey({
         state: handleKeyState,
 
         pivotOffset,
@@ -1972,7 +2007,7 @@ export function initGizmo({
                             vertexQueue
                         });
 
-                        if (!handled && transformControls!.mode === 'rotate') {
+                        if (!handled && transformControls!.mode === 'rotate' && !isShearMode) {
                             handled = processVertexRotate(selectedVertexKeys, {
                                 isVertexMode,
                                 gizmoMode: transformControls!.mode,
@@ -2177,6 +2212,7 @@ export function initGizmo({
             transformControls!.camera = nextCamera;
         },
         getTransformControls: () => transformControls!,
+        ...transformToolbarControls,
         updateGizmo: () => {
             flushSelectionTransform();
 

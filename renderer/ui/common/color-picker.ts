@@ -140,7 +140,7 @@ function positionPicker(): void {
   picker.style.top = `${Math.max(8, Math.min(savedTop === null ? rect.bottom + 5 : Number(savedTop), innerHeight - picker.offsetHeight - 8))}px`;
 }
 
-function closePicker(): void {
+export function closeColorPicker(): void {
   if (picker) picker.hidden = true;
   options.onClose?.();
   anchor = null;
@@ -217,7 +217,7 @@ function createPicker(): HTMLElement {
     [hue, saturation, value] = rgbToHsv(rgb);
     syncPicker();
   };
-  element.querySelector<HTMLElement>('header button')!.onclick = closePicker;
+  element.querySelector<HTMLElement>('header button')!.onclick = closeColorPicker;
   element.querySelector<HTMLInputElement>('.color-picker-oklch input')!.onchange = event => {
     options.oklch = (event.target as HTMLInputElement).checked;
     options.onOklchChange?.(!!options.oklch);
@@ -264,7 +264,7 @@ function createPicker(): HTMLElement {
     localStorage.setItem('pdeColorPickerHeight', String(element.offsetHeight));
   }).observe(element);
   document.addEventListener('pointerdown', event => {
-    if (!element.hidden && !element.contains(event.target as Node) && !anchor?.contains(event.target as Node)) closePicker();
+    if (!element.hidden && !element.contains(event.target as Node) && !anchor?.contains(event.target as Node)) closeColorPicker();
   }, true);
   window.addEventListener('resize', positionPicker);
   return element;

@@ -1,6 +1,7 @@
 export const shortcutDefinitions = [
   { id: 'translate', category: '일반', label: '이동 도구', defaults: ['T'] },
   { id: 'rotate', category: '일반', label: '회전 도구', defaults: ['R'] },
+  { id: 'shear', category: '일반', label: 'Shear 도구', defaults: ['W'] },
   { id: 'scale', category: '일반', label: '크기 도구', defaults: ['S'] },
   { id: 'toggleSpace', category: '일반', label: '로컬/월드 전환', defaults: ['X'] },
   { id: 'togglePivot', category: '일반', label: '피벗 중심/원점 전환', defaults: ['Z'] },
@@ -13,7 +14,7 @@ export const shortcutDefinitions = [
   { id: 'fineAdjust', category: '일반', label: '미세조정', defaults: ['Shift'] },
   { id: 'headPainterPickColor', category: '헤드 페인터', label: '색상 피킹', defaults: ['Alt'] },
   { id: 'headPainterCopyStamp', category: '헤드 페인터', label: '스탬프 복사', defaults: ['Shift'] },
-  { id: 'headPainterConnectedFill', category: '헤드 페인터', label: '인접 영역 채우기', defaults: ['Shift'] },
+  { id: 'headPainterConnectedFill', category: '헤드 페인터', label: '한 면 채우기', defaults: ['Shift'] },
   { id: 'headPainterFillAllFaces', category: '헤드 페인터', label: '6면 전체 채우기', defaults: ['Ctrl'] },
   { id: 'headPainterPaletteGradient', category: '헤드 페인터', label: '팔레트 그라데이션', defaults: ['Shift'] },
   { id: 'headPainterSelectBrushArea', category: '헤드 페인터', label: '브러시 픽셀 영역 선택', defaults: ['Ctrl'] },

@@ -14,14 +14,15 @@ import type { TransformControls } from 'three/examples/jsm/controls/TransformCon
 import { resetCustomPivot } from '../pivot/custom-pivot-remove';
 import { removeShearFromSelection } from '../pivot/shear-remove';
 import { focusCameraOnSelection } from './camera';
-import { toggleBlockbenchScaleMode } from '../gizmo/blockbench-scale';
+import { blockbenchScaleMode, toggleBlockbenchScaleMode } from '../gizmo/blockbench-scale';
+import { isSmartScaleEnabled } from '../gizmo/smart-scale';
 import { toggleShading } from '../../entity-material';
 import { isInstanceRendered, type SelectionState, type SelectedItem } from '../selection/select';
 import type { GroupData } from '../grouping/group';
 import type { QueueItem } from '../vertex/vertex-swap';
 import * as GroupUtils from '../grouping/group';
 import { getLinkedMirrorSelection } from '../transform/mirroring';
-import { redo, undo } from '../undo-redo/undo-redo';
+import { canRedo, canUndo, isApplying, redo, undo } from '../undo-redo/undo-redo';
 import { captureSelectionTransformState, recordTransformChange } from '../undo-redo/scene-history';
 import { matchesShortcut, type ShortcutId } from './shortcuts';
 import { copySelection, pasteSelection, isSelectionPastePending } from './selection-clipboard';
@@ -48,11 +49,29 @@ interface PivotResetFlags {
     selectionAnchorMode: 'default' | 'center';
 }
 
-type GizmoMode = 'translate' | 'rotate' | 'scale';
+type GizmoMode = 'translate' | 'rotate' | 'scale' | 'shear';
+export type TransformToolbarAction = GizmoMode | 'undo' | 'redo' | 'toggleScaleMode' | 'toggleSmartScale'
+    | 'toggleSpace' | 'togglePivot' | 'group' | 'duplicate' | 'deleteSelection';
+export interface TransformToolbarState {
+    mode: GizmoMode;
+    blockbenchScale: boolean;
+    smartScale: boolean;
+    space: 'world' | 'local';
+    pivot: string;
+    disabled: boolean;
+    canUndo: boolean;
+    canRedo: boolean;
+    hasSelection: boolean;
+}
+export interface TransformToolbarControls {
+    executeTransformAction(action: TransformToolbarAction): void;
+    getTransformToolbarState(): TransformToolbarState;
+}
 
 // ─── Public interface ─────────────────────────────────────────────────────────
 
 export interface HandleKeyState {
+    isShearMode: boolean;
     isVertexMode: boolean;
     currentSpace: 'world' | 'local';
     pivotMode: string;
@@ -156,7 +175,7 @@ export interface HandleKeyParams {
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 
-export function initHandleKey(p: HandleKeyParams): void {
+export function initHandleKey(p: HandleKeyParams): TransformToolbarControls {
     let pivotEditPreviousGizmoMode: string | null = null;
     const getDirectSelectedItems = (): SelectedItem[] => Array.from(p.currentSelection.objects, ([mesh, ids]) =>
         [...ids].map(instanceId => ({ type: 'object' as const, mesh, instanceId }))
@@ -164,10 +183,13 @@ export function initHandleKey(p: HandleKeyParams): void {
 
     const setGizmoMode = (mode: GizmoMode): void => {
         const controls = p.getTransformControls();
-        const currentMode = controls.mode as GizmoMode;
+        const currentMode = p.state.isShearMode ? 'shear' : controls.mode as GizmoMode;
         if (mode === currentMode) return;
         p.state.previousGizmoMode = currentMode;
-        controls.setMode(mode);
+        p.state.isShearMode = mode === 'shear';
+        controls.setMode(mode === 'shear' ? 'rotate' : mode);
+        if (p.state.isShearMode) console.log('Shear mode activated');
+        else if (currentMode === 'shear') console.log('Shear mode deactivated');
     };
 
     // ── Inner key handler ────────────────────────────────────────────────────
@@ -210,6 +232,10 @@ export function initHandleKey(p: HandleKeyParams): void {
                 setGizmoMode('rotate');
                 resetHelperRotationForWorldSpace();
                 break;
+            case 'shear':
+                setGizmoMode(p.state.isShearMode ? p.state.previousGizmoMode as GizmoMode : 'shear');
+                resetHelperRotationForWorldSpace();
+                break;
             case 'scale':
                 setGizmoMode('scale');
                 resetHelperRotationForWorldSpace();
@@ -220,6 +246,9 @@ export function initHandleKey(p: HandleKeyParams): void {
                 break;
             case 'duplicate':
                 p.duplicateSelected();
+                break;
+            case 'deleteSelection':
+                p.deleteSelectedItems();
                 break;
             case 'knife':
                 p.knifeSelected();
@@ -331,6 +360,59 @@ export function initHandleKey(p: HandleKeyParams): void {
         }
     };
 
+    const interactionBlocked = () => p.state.isPivotEditMode
+        || isSelectionPastePending() || isApplying();
+
+    const painterBlocksTransforms = () => !!p.loadedObjectGroup.userData.headPainterActive
+        && p.renderer.domElement.dataset.headPainterTool !== 'select' && !p.hasAnySelection();
+
+    const reportClipboardError = (error: unknown) => {
+        console.error('Scene clipboard failed.', error);
+        window.alert(`복사·붙여넣기 실패: ${error instanceof Error ? error.message : String(error)}`);
+    };
+
+    const executeAction = (key: ShortcutId, fromToolbar = false): void => {
+        if (p.state.isGizmoBusy || interactionBlocked() || (fromToolbar && p.getTransformControls().dragging)) return;
+        if (key !== 'undo' && key !== 'redo' && painterBlocksTransforms()) return;
+        if (fromToolbar && (key === 'group' || key === 'duplicate' || key === 'deleteSelection') && !p.hasAnySelection()) return;
+        if (key === 'copySelection') {
+            if (p.getTransformControls().dragging) return;
+            p.state.isGizmoBusy = true;
+            void copySelection(p.currentSelection).catch(reportClipboardError).finally(() => { p.state.isGizmoBusy = false; });
+            return;
+        }
+        if (key === 'undo' || key === 'redo') {
+            if (p.getTransformControls().dragging) return;
+            void (key === 'redo' ? redo() : undo()).catch(error => console.error('Undo/Redo failed.', error));
+            return;
+        }
+        p.state.isGizmoBusy = true;
+        const finish = () => {
+            try { handleKeyPress(key); }
+            finally { setTimeout(() => { p.state.isGizmoBusy = false; }, 50); }
+        };
+        if (p.getTransformControls().dragging) {
+            const attachedObject = p.getTransformControls().object;
+            p.getTransformControls().pointerUp({ button: 0 } as PointerEvent);
+            const currentControls = p.state.controls;
+            const oldTarget = currentControls.target.clone();
+            currentControls.dispose();
+            const newControls = new (currentControls.constructor as any)(p.camera, (p.renderer as any).domElement);
+            newControls.screenSpacePanning = true;
+            newControls.target.copy(oldTarget);
+            newControls.update();
+            if (p.setExternalControls) p.setExternalControls(newControls);
+            p.state.controls = newControls;
+            setTimeout(() => {
+                if (attachedObject) {
+                    p.getTransformControls().detach();
+                    p.getTransformControls().attach(attachedObject);
+                }
+                finish();
+            }, 0);
+        } else finish();
+    };
+
     // ── keydown ──────────────────────────────────────────────────────────────
 
     window.addEventListener('keydown', (event: KeyboardEvent) => {
@@ -348,12 +430,8 @@ export function initHandleKey(p: HandleKeyParams): void {
         if (matchesShortcut(event, 'copySelection') || matchesShortcut(event, 'pasteSelection')) {
             event.preventDefault();
             if (event.repeat || event.isComposing || p.loadedObjectGroup.userData.headPainterActive || p.state.isGizmoBusy || p.getTransformControls().dragging) return;
-            const action = matchesShortcut(event, 'copySelection') ? copySelection : pasteSelection;
-            if (action === copySelection && isSelectionPastePending()) return;
-            void action(p.currentSelection).catch(error => {
-                console.error('Scene clipboard failed.', error);
-                window.alert(`복사·붙여넣기 실패: ${error instanceof Error ? error.message : String(error)}`);
-            });
+            if (matchesShortcut(event, 'copySelection')) executeAction('copySelection');
+            else void pasteSelection(p.currentSelection).catch(reportClipboardError);
             return;
         }
         if (isSelectionPastePending()) { event.preventDefault(); return; }
@@ -361,8 +439,7 @@ export function initHandleKey(p: HandleKeyParams): void {
 
         if (matchesShortcut(event, 'undo') || matchesShortcut(event, 'redo')) {
             event.preventDefault();
-            const action = matchesShortcut(event, 'redo') ? redo() : undo();
-            void action.catch(error => console.error('Undo/Redo failed.', error));
+            if (!event.repeat) executeAction(matchesShortcut(event, 'redo') ? 'redo' : 'undo');
             return;
         }
 
@@ -380,7 +457,7 @@ export function initHandleKey(p: HandleKeyParams): void {
 
         if (matchesShortcut(event, 'deleteSelection')) {
             event.preventDefault();
-            p.deleteSelectedItems();
+            executeAction('deleteSelection');
             return;
         }
 
@@ -531,41 +608,13 @@ export function initHandleKey(p: HandleKeyParams): void {
                 if (before) recordTransformChange(p.loadedObjectGroup, before);
         }
 
-        const key = (['translate', 'rotate', 'scale', 'previousGizmo', 'toggleSpace', 'togglePivot', 'removeShear', 'toggleScaleMode', 'toggleSmartScale', 'group', 'duplicate', 'knife', 'toggleVertex', 'toggleShading'] as ShortcutId[])
+        const key = (['translate', 'rotate', 'shear', 'scale', 'previousGizmo', 'toggleSpace', 'togglePivot', 'removeShear', 'toggleScaleMode', 'toggleSmartScale', 'group', 'duplicate', 'knife', 'toggleVertex', 'toggleShading'] as ShortcutId[])
             .find(id => matchesShortcut(event, id));
-        if (key === 'previousGizmo') {
+        if (key === 'previousGizmo' || key === 'shear') {
             event.preventDefault();
             if (event.repeat) return;
         }
-        if (p.state.isGizmoBusy) return;
-        if (key && p.getTransformControls().dragging) {
-            p.state.isGizmoBusy = true;
-            const attachedObject = p.getTransformControls().object;
-            p.getTransformControls().pointerUp({ button: 0 } as PointerEvent);
-            const currentControls = p.state.controls;
-            const oldTarget = currentControls.target.clone();
-            currentControls.dispose();
-            const newControls = new (currentControls.constructor as any)(p.camera, (p.renderer as any).domElement);
-            newControls.screenSpacePanning = true;
-            newControls.target.copy(oldTarget);
-            newControls.update();
-            if (p.setExternalControls) p.setExternalControls(newControls);
-            p.state.controls = newControls;
-            setTimeout(() => {
-                if (attachedObject) {
-                    p.getTransformControls().detach();
-                    p.getTransformControls().attach(attachedObject);
-                }
-                handleKeyPress(key);
-                p.state.isGizmoBusy = false;
-            }, 0);
-            return;
-        }
-        if (key) {
-            p.state.isGizmoBusy = true;
-            handleKeyPress(key);
-            setTimeout(() => { p.state.isGizmoBusy = false; }, 50);
-        }
+        if (key) executeAction(key);
     });
 
     // ── keyup ────────────────────────────────────────────────────────────────
@@ -645,4 +694,18 @@ export function initHandleKey(p: HandleKeyParams): void {
     window.addEventListener('focus', () => {
         clearAltState();
     });
+    return {
+        executeTransformAction: action => executeAction(action, true),
+        getTransformToolbarState: () => ({
+            mode: p.state.isShearMode ? 'shear' : p.getTransformControls().mode as GizmoMode,
+            blockbenchScale: blockbenchScaleMode,
+            smartScale: isSmartScaleEnabled(),
+            space: p.state.currentSpace,
+            pivot: p.state.pivotMode,
+            disabled: interactionBlocked() || p.getTransformControls().dragging || painterBlocksTransforms(),
+            canUndo: !interactionBlocked() && !p.state.isGizmoBusy && !p.getTransformControls().dragging && canUndo(),
+            canRedo: !interactionBlocked() && !p.state.isGizmoBusy && !p.getTransformControls().dragging && canRedo(),
+            hasSelection: p.hasAnySelection()
+        })
+    };
 }

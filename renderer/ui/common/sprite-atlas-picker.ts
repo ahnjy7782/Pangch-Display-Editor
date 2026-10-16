@@ -1,4 +1,4 @@
-import { getAssetBytes, getAssetUrl } from '../asset-manager';
+import { getAssetBytes, getAssetUrl } from '../../asset-manager';
 import { closeWithAnimation, openWithAnimation } from './ui-open-close.js';
 
 type SpriteAtlasEntry = { name: string; id: string; url: string };

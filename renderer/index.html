@@ -4,11 +4,24 @@
   <meta charset="UTF-8">
   <title>PDE</title>
   <link rel="stylesheet" href="./ui/main.css">
-  <script type="module" src="./ui/tool-bar.ts"></script>
-  <script type="module" src="./ui/setting.ts"></script>
-  <script type="module" src="./ui/summon-command.ts"></script>
+  <script type="module" src="./ui/head-editor/head-texture-loading.ts"></script>
+  <script type="module" src="./ui/dialogs/welcome.ts"></script>
+  <script type="module" src="./ui/toolbar/tool-bar.ts"></script>
+  <script type="module" src="./ui/settings/setting.ts"></script>
+  <script type="module" src="./ui/dialogs/summon-command.ts"></script>
 </head>
 <body>
+  <header id="menu-bar">
+    <span class="menu-bar-logo" aria-hidden="true"></span>
+    <span class="menu-bar-title">PDE</span>
+    <div class="menu-bar-items">
+      <span>파일</span>
+      <span>편집</span>
+      <span>소환</span>
+      <span>도움!</span>
+    </div>
+  </header>
+
   <div id="loading-overlay">
     <img id="loading-icon" src="" alt="Loading Icon" />
     <div id="loading-text">텍스쳐 로딩중...</div>
@@ -16,7 +29,7 @@
 
   <div id="main-content">
     <canvas id="renderCanvas"></canvas>
-    <div id="scene-toolbar">
+    <div id="scene-toolbar" class="horizontal-toolbar">
       <div class="toolbar-dimensions"><button type="button" class="toolbar-dimensions-toggle lucide-icon" aria-label="크기 설정" aria-expanded="false">&#xE2F0;</button><div class="toolbar-dimensions-menu" hidden><label>X <input class="pde-input" name="x" inputmode="numeric" pattern="[0-9]*"></label><label>Y <input class="pde-input" name="y" inputmode="numeric" pattern="[0-9]*"></label><label>Z <input class="pde-input" name="z" inputmode="numeric" pattern="[0-9]*"></label></div></div>
       <i>&#xE061;</i><i>&#xE5C6;</i><i class="player-head-icon"></i><i>&#xE198;</i><i>&#xE1D3;</i><button id="settings-button" class="menu-icon" type="button" aria-label="설정">≡</button>
     </div>
@@ -36,6 +49,7 @@
           <button type="button" class="lucide-icon" data-atlas-action="deleteSelection" title="선택 영역 텍스처 삭제" aria-label="선택 영역 텍스처 삭제" disabled>&#xE18E;</button>
           <button type="button" class="lucide-icon" data-atlas-action="flipX" title="X축 반전 (좌우)" aria-label="X축 반전 (좌우)" disabled>&#xE35D;</button>
           <button type="button" class="lucide-icon" data-atlas-action="flipY" title="Y축 반전 (상하)" aria-label="Y축 반전 (상하)" disabled>&#xE35E;</button>
+          <button type="button" class="lucide-icon" data-atlas-color-replace title="아틀라스 색상 교체" aria-label="아틀라스 색상 교체" disabled>&#xE1DD;</button>
         </div>
         <div class="player-head-uv-metrics" aria-live="polite">
           <span>X —</span><span>Y —</span><span>— × — px</span>

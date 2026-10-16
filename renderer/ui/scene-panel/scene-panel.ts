@@ -1,9 +1,9 @@
-import { currentSelection } from '../controls/selection/select';
-import { matchesShortcut } from '../controls/input/shortcuts';
-import { scenePanelState } from './scene-panel/scene-panel-state';
-import type { ScenePanelSelectionState } from './scene-panel/scene-panel-types';
-import { beginScenePanelRename, refreshScenePanel, scheduleSceneExtraFit, scheduleScenePanelRender } from './scene-panel/scene-panel-render';
-import { syncScenePanelSelection } from './scene-panel/scene-panel-selection';
+import { currentSelection } from '../../controls/selection/select';
+import { matchesShortcut } from '../../controls/input/shortcuts';
+import { scenePanelState } from './scene-panel-state';
+import type { ScenePanelSelectionState } from './scene-panel-types';
+import { beginScenePanelRename, refreshScenePanel, scheduleSceneExtraFit, scheduleScenePanelRender } from './scene-panel-render';
+import { syncScenePanelSelection } from './scene-panel-selection';
 
 if (scenePanelState.scenePanelList) {
     const list = scenePanelState.scenePanelList;

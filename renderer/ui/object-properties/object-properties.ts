@@ -1,18 +1,19 @@
 import { Euler, InstancedMesh, Matrix4, Mesh, Quaternion, Vector3 } from 'three/webgpu';
-import type { SelectedItem, SelectionState } from '../controls/selection/select';
-import { loadedObjectGroup } from '../load-project/pbde/upload-pbde';
-import { getPlayerHeadTexture, replaceDisplayObject, updateDisplayObjectMatrix, updateObjectBrightness, updatePlayerHeadTexture, updateTextDisplay } from '../load-project/display/mesh-builder';
-import type { DisplayReplacementResult } from '../load-project/display/mesh-builder';
-import type { TextDisplayContentType, TextDisplayOptions } from '../load-project/display/text-display';
-import { defaultTextDisplayOptions } from '../load-project/display/text-display';
-import { queueProjectEdit, startProjectEdit, trackProjectEdit } from '../save/pending-edits';
-import { getBlockPropertyOptions } from '../load-project/pbde/pbde-assets';
-import type { GroupData } from './scene-panel/scene-panel-types';
-import { cleanLabel } from './scene-panel/scene-panel-model';
-import * as GroupUtils from '../controls/grouping/group';
-import * as Overlay from '../controls/selection/overlay';
-import { applyDeltaToSelection } from '../controls/selection/drag';
-import { blockbenchScaleMode } from '../controls/gizmo/blockbench-scale';
+import type { SelectedItem, SelectionState } from '../../controls/selection/select';
+import { loadedObjectGroup } from '../../load-project/pbde/upload-pbde';
+import { getPlayerHeadTexture, replaceDisplayObject, updateDisplayObjectMatrix, updateObjectBrightness, updatePlayerHeadTexture, updateTextDisplay } from '../../load-project/display/mesh-builder';
+import type { DisplayReplacementResult } from '../../load-project/display/mesh-builder';
+import { DEFAULT_PLAYER_HEAD_TEXTURE } from '../../load-project/display/player-head-atlas';
+import type { TextDisplayContentType, TextDisplayOptions } from '../../load-project/display/text-display';
+import { defaultTextDisplayOptions } from '../../load-project/display/text-display';
+import { queueProjectEdit, startProjectEdit, trackProjectEdit } from '../../save/pending-edits';
+import { getBlockPropertyOptions } from '../../load-project/pbde/pbde-assets';
+import type { GroupData } from '../scene-panel/scene-panel-types';
+import { cleanLabel } from '../scene-panel/scene-panel-model';
+import * as GroupUtils from '../../controls/grouping/group';
+import * as Overlay from '../../controls/selection/overlay';
+import { applyDeltaToSelection } from '../../controls/selection/drag';
+import { blockbenchScaleMode } from '../../controls/gizmo/blockbench-scale';
 import {
     applyLinkedMirrorDelta,
     getLinkedMirrorSelection,
@@ -21,7 +22,7 @@ import {
     isMirrorModelingEnabled,
     syncLinkedMirrorGroupPivot,
     syncLinkedMirrorPivot
-} from '../controls/transform/mirroring';
+} from '../../controls/transform/mirroring';
 import {
     captureHistoryUiState,
     captureSelectionTransformState,
@@ -30,10 +31,10 @@ import {
     recordTransformChange,
     refreshHistory,
     type TransformHistoryState
-} from '../controls/undo-redo/scene-history';
-import { getHeadGridValue, setHeadGridOverride } from './head-painter';
-import { hexToRgb, openColorPicker, rgbToHex } from './color-picker';
-import { isValidSpriteReference, openSpriteAtlasPicker, openSpritePicker, resolveSpriteReference } from './sprite-atlas-picker';
+} from '../../controls/undo-redo/scene-history';
+import { getHeadGridValue, setHeadGridOverride } from '../head-editor/head-painter';
+import { hexToRgb, openColorPicker, rgbToHex } from '../common/color-picker';
+import { isValidSpriteReference, openSpriteAtlasPicker, openSpritePicker, resolveSpriteReference } from '../common/sprite-atlas-picker';
 
 const title = document.getElementById('details-title')!;
 const tabs = document.getElementById('project-tabs')!;
@@ -560,6 +561,7 @@ function brightnessProperty(brightness: { sky?: number; block?: number }, onChan
 }
 
 function textureUrl(value: string): string {
+    if (!value) return DEFAULT_PLAYER_HEAD_TEXTURE;
     try {
         return JSON.parse(atob(value)).textures.SKIN.url;
     } catch {
@@ -1505,6 +1507,7 @@ function renderObject(mesh: InstancedMesh, instanceId: number, index: number, pi
         if (name.startsWith('player_head')) {
             const input = document.createElement('input');
             input.value = texture ?? '';
+            input.onkeydown = event => { if (event.key === 'Enter') input.blur(); };
             input.onchange = async () => {
                 const previous = texture ?? '';
                 input.value = textureUrl(input.value.trim());

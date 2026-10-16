@@ -31,6 +31,7 @@ export async function saveProject(): Promise<void> {
 }
 
 window.addEventListener('keydown', event => {
+    if (document.querySelector('dialog[open], .settings-overlay:not([hidden])')) return;
     if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey || event.key.toLowerCase() !== 's') return;
     event.preventDefault();
     event.stopImmediatePropagation();
