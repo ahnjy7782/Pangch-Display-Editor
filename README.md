@@ -1,3 +1,8 @@
+[Pangch-Display-Editor](https://github.com/Pangch2/Pangch-Display-Editor)를 이것저것 뜯고 씹고 맛보는 개인 레포~<br/>
+<sub>그래도 가끔 실용적인게 나오지 않을까... 하는 마음..?</sub><br/>
+## 아래는 원본 레포의 README 입니다.
+<br/><br/>
+
 ### 우리가게정상영업합니다(아마도?)
 리드미 업데아트 언제하지 아아아아ㅏ아
 ---
