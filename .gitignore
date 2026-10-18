@@ -43,3 +43,12 @@ Thumbs.db
 # 잠금 파일은 반드시 포함! (주의)
 # package-lock.json 포함 필요
 # yarn.lock 포함 필요 (Yarn 사용자일 경우)
+
+# 작업도구 폴더/파일
+.cache
+AGENTS.md
+TODO.md
+TREE.md
+features.md
+.codegraph/
+.github/
